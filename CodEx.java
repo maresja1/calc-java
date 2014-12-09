@@ -2,8 +2,6 @@
 
 import java.io.*;
 import java.io.BufferedReader;
-import java.lang.Character;
-import java.lang.StringBuilder;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -16,9 +14,9 @@ import java.util.regex.Pattern;
 public class CodEx {
     public static class TokenReader{
 
+        private final Pattern newLinePattern;
         private HashMap<TokenType, Pattern> tokenHashMap;
         private HashMap<TokenType, Pattern> funcArgsHashMap;
-        private Pattern newLinePattern;
         private Pattern delimiterPattern;
         private BufferedReader in;
         private String[] buffer;
@@ -36,19 +34,19 @@ public class CodEx {
             this.in = new BufferedReader(in);
             tokenHashMap = new HashMap<TokenType, Pattern>();
             funcArgsHashMap = new HashMap<TokenType, Pattern>();
-            tokenHashMap.put(TokenType.asterisk, Pattern.compile("\\*"));
-            tokenHashMap.put(TokenType.slash, Pattern.compile("/"));
-            tokenHashMap.put(TokenType.plus, Pattern.compile("\\+"));
-            tokenHashMap.put(TokenType.minus, Pattern.compile("-"));
-            tokenHashMap.put(TokenType.equals, Pattern.compile("="));
-            tokenHashMap.put(TokenType.def, Pattern.compile("DEF"));
-            tokenHashMap.put(TokenType.lBracket, Pattern.compile("\\("));
-            tokenHashMap.put(TokenType.rBracket, Pattern.compile("\\)"));
-            tokenHashMap.put(TokenType.funCall, Pattern.compile("([a-z]+)\\(([^\\)]*)\\)"));
+            tokenHashMap.put(TokenType.asterisk, Pattern.compile("*",Pattern.LITERAL));
+            tokenHashMap.put(TokenType.slash, Pattern.compile("/",Pattern.LITERAL));
+            tokenHashMap.put(TokenType.plus, Pattern.compile("+",Pattern.LITERAL));
+            tokenHashMap.put(TokenType.minus, Pattern.compile("-",Pattern.LITERAL));
+            tokenHashMap.put(TokenType.equals, Pattern.compile("=",Pattern.LITERAL));
+            tokenHashMap.put(TokenType.def, Pattern.compile("DEF",Pattern.LITERAL));
+            tokenHashMap.put(TokenType.lBracket, Pattern.compile("(",Pattern.LITERAL));
+            tokenHashMap.put(TokenType.rBracket, Pattern.compile(")",Pattern.LITERAL));
+            tokenHashMap.put(TokenType.argSeparator, Pattern.compile(",",Pattern.LITERAL));
             funcArgsHashMap.put(TokenType.number, Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?"));
-            funcArgsHashMap.put(TokenType.varIdentifier, Pattern.compile("[a-z]+"));
+            funcArgsHashMap.put(TokenType.identifier, Pattern.compile("[a-z]+"));
             newLinePattern = Pattern.compile("(\\r)?\\n");
-            delimiterPattern = Pattern.compile(" +");
+            delimiterPattern = Pattern.compile("\\s+");
             tokenHashMap.putAll(funcArgsHashMap);
             try {
                 fillBuffer();
@@ -69,19 +67,14 @@ public class CodEx {
             asterisk,
             slash,
             def,
-            funCall,
-            varIdentifier,
-            number
+            identifier,
+            number,
+            argSeparator
         }
 
         public static class Token {
             TokenType type;
-            Object value;
-        }
-
-        public static class FuncCallDescription {
-            String funcName;
-            List<Token> args;
+            String value;
         }
 
         private void fillBuffer() throws IOException {
@@ -121,7 +114,7 @@ public class CodEx {
             return matcher.lookingAt();
         }
 
-        private String matchNext(Pattern tokenPattern){
+        private Matcher matchNext(Pattern tokenPattern){
             String actualWord = getActualWord();
             if(actualWord == null){
                 throw new BadExpressionFormatException("Unexpected token");
@@ -129,9 +122,7 @@ public class CodEx {
             Matcher matcher = tokenPattern.matcher(actualWord);
             matcher.region(posInWord,matcher.regionEnd());
             if(matcher.lookingAt()){
-                String result = actualWord.substring(posInWord,matcher.end());
-                posInWord = matcher.end();
-                return result;
+                return matcher;
             } else {
                 throw new BadExpressionFormatException("Unexpected token");
             }
@@ -142,21 +133,13 @@ public class CodEx {
             return posInBuffer == buffer.length;
         }
 
-        public void skipRestOfLine(){
-            try {
-                fillBuffer();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+        public void skipRestOfLine() throws IOException {
+            fillBuffer();
         }
-        public void skipNewLine(){
+        public void skipNewLine() throws IOException {
             getActualWord();
             if(posInBuffer == buffer.length){
-                try {
-                    fillBuffer();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                fillBuffer();
             } else {
                 throw new BadExpressionFormatException("Expected line end");
             }
@@ -164,22 +147,13 @@ public class CodEx {
 
         public Token matchToken(TokenType tokenType){
             Pattern tokenPattern = tokenHashMap.get(tokenType);
-            String next = matchNext(tokenPattern);
+            Matcher matcher = matchNext(tokenPattern);
+            String next = getActualWord().substring(posInWord, matcher.end());
+            posInWord = matcher.end();
+
             Token token = new Token();
-            if(tokenType == TokenType.funCall){
-                FuncCallDescription funcCallDescription = new FuncCallDescription();
-                //TODO: this
-//                funcCallDescription.funcName = matcher.group(1);
-//                String[] splitString = matcher.group(2).split(",");
-//                funcCallDescription.args = new ArrayList<Token>();
-//                for (String str : splitString) {
-//                    funcCallDescription.args.add(parseToken(str, funcArgsHashMap));
-//                }
-                token.value = funcCallDescription;
-            } else {
-                token.type = tokenType;
-                token.value = next;
-            }
+            token.type = tokenType;
+            token.value = next;
             return token;
         }
 
@@ -197,7 +171,7 @@ public class CodEx {
         /**
          * Returns the value of the expression
          *
-         * @param context
+         * @param context context of expression execution
          * @return value of the expression
          */
         public T solve(IExpressionContext<T> context);
@@ -263,59 +237,6 @@ public class CodEx {
         public BadExpressionFormatException(String message) {
             super(message);
         }
-
-        /**
-         * Constructs a new runtime exception with the specified detail message and
-         * cause.  <p>Note that the detail message associated with
-         * {@code cause} is <i>not</i> automatically incorporated in
-         * this runtime exception's detail message.
-         *
-         * @param message the detail message (which is saved for later retrieval
-         *                by the {@link #getMessage()} method).
-         * @param cause   the cause (which is saved for later retrieval by the
-         *                {@link #getCause()} method).  (A <tt>null</tt> value is
-         *                permitted, and indicates that the cause is nonexistent or
-         *                unknown.)
-         * @since 1.4
-         */
-        public BadExpressionFormatException(String message, Throwable cause) {
-            super(message, cause);
-        }
-
-        /**
-         * Constructs a new runtime exception with the specified cause and a
-         * detail message of <tt>(cause==null ? null : cause.toString())</tt>
-         * (which typically contains the class and detail message of
-         * <tt>cause</tt>).  This constructor is useful for runtime exceptions
-         * that are little more than wrappers for other throwables.
-         *
-         * @param cause the cause (which is saved for later retrieval by the
-         *              {@link #getCause()} method).  (A <tt>null</tt> value is
-         *              permitted, and indicates that the cause is nonexistent or
-         *              unknown.)
-         * @since 1.4
-         */
-        public BadExpressionFormatException(Throwable cause) {
-            super(cause);
-        }
-
-        /**
-         * Constructs a new runtime exception with the specified detail
-         * message, cause, suppression enabled or disabled, and writable
-         * stack trace enabled or disabled.
-         *
-         * @param message            the detail message.
-         * @param cause              the cause.  (A {@code null} value is permitted,
-         *                           and indicates that the cause is nonexistent or unknown.)
-         * @param enableSuppression  whether or not suppression is enabled
-         *                           or disabled
-         * @param writableStackTrace whether or not the stack trace should
-         *                           be writable
-         * @since 1.7
-         */
-        protected BadExpressionFormatException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
-            super(message, cause, enableSuppression, writableStackTrace);
-        }
     }
 
     /**
@@ -353,11 +274,12 @@ public class CodEx {
     }
 
     private static class FunctionDefinition<T> {
-        private String[] arguments;
+        private ArrayList<TokenReader.Token> arguments;
         private IExpression<T> functionExpression;
         private String funcName;
 
-        public FunctionDefinition(String funcName, String[] arguments, IExpression<T> functionExpression) {
+
+        public FunctionDefinition(String funcName, ArrayList<TokenReader.Token> arguments, IExpression<T> functionExpression) {
             this.arguments = arguments;
             this.functionExpression = functionExpression;
             this.funcName = funcName;
@@ -368,20 +290,11 @@ public class CodEx {
         }
 
         public String getArgumentName(int index) {
-            return arguments[index];
+            return arguments.get(index).value;
         }
 
         public int getArgumentCount() {
-            return arguments.length;
-        }
-
-        public int getArgsIndex(String argName) {
-            for (int i = 0; i < arguments.length; i++) {
-                if (arguments[i].equals(argName)) {
-                    return i;
-                }
-            }
-            return -1;
+            return arguments.size();
         }
 
         public String getFuncName() {
@@ -393,7 +306,6 @@ public class CodEx {
     private static class FunctionCallExpression<T> implements IOperandExpression<T> {
         FunctionDefinition<T> functionDefinition;
         IExpression<T>[] operands;
-        ExpressionContextWrapper<T> expressionContextWrapper;
 
         public FunctionCallExpression(FunctionDefinition<T> functionDefinition) {
             this.functionDefinition = functionDefinition;
@@ -401,13 +313,13 @@ public class CodEx {
         }
 
         @Override
-        public int getArity() {
-            return functionDefinition.getArgumentCount();
+        public void setOperand(int index, IExpression<T> operand) {
+            operands[index] = operand;
         }
 
         @Override
-        public void setOperand(int index, IExpression<T> operand) {
-            operands[index] = operand;
+        public int getArity() {
+            return functionDefinition.getArgumentCount();
         }
 
         @Override
@@ -421,7 +333,7 @@ public class CodEx {
             for (int i = 0; i < functionDefinition.getArgumentCount(); i++) {
                 expressionContextWrapper.setVariableValue(functionDefinition.getArgumentName(i), operands[i]);
             }
-            return functionDefinition.functionExpression.solve(expressionContextWrapper);
+            return functionDefinition.getFunctionExpression().solve(expressionContextWrapper);
         }
     }
 
@@ -467,12 +379,14 @@ public class CodEx {
 
         @Override
         public void setVariableValue(String varName, IExpression<T> expression) {
-            variablesValues.put(varName, expression);
+            if(!varName.equals("last")){
+                variablesValues.put(varName, expression);
+            }
         }
     }
 
     public static class FloatExpression implements IExpressionContext<Double> {
-        private boolean extendedExpression = false;
+        private boolean extendedExpression = true;
         private double last = 0;
         private HashMap<String, FunctionDefinition<Double>> functionsDefinition = new HashMap<String, FunctionDefinition<Double>>();
         private ExpressionContextWrapper<Double> contextWrapper;
@@ -545,14 +459,17 @@ public class CodEx {
             }
         }
 
-//        S -> def FN \n E | id A | E
+//        S -> def id(VarList) E \n E | id A | E
 //        A -> = E | + HEa | - HEa | * TF | / TF
-//        FN -> funcCall E
 //        E -> HEa
 //        Ea -> + TEa | /\
 //        T -> DTa
 //        Ta -> * TF | / TF | /\
-//        F -> (E) | num | id | funcCall
+//        F -> (E) | num | id | id (Arglist)
+//        Arglist -> (E ArglistC)
+//        ArglistC -> ,E ArglistC | /\
+//        VarList -> (id VarListC)
+//        VarListC -> ,id VarListC | /\
 
 
         public FloatExpression(TokenReader reader) {
@@ -568,6 +485,7 @@ public class CodEx {
                 }
                 return expression;
             } catch (BadExpressionFormatException e){
+                last = 0;
                 reader.skipRestOfLine();
                 throw e;
             }
@@ -578,20 +496,21 @@ public class CodEx {
             return last;
         }
 
-        private IExpression<Double> matchS() {
+        private IExpression<Double> matchS() throws IOException {
             if (hasFileEnd()) {
                 return null;
             }else if(hasLineEnd()) {
                 matchNewLine();
                 return matchS();
             } else if (hasToken(TokenReader.TokenType.def) && extendedExpression) {
+                last = 0;
                 matchTerm(TokenReader.TokenType.def);
                 FunctionDefinition<Double> functionDefinition = matchFN();
                 functionsDefinition.put(functionDefinition.getFuncName(), functionDefinition);
                 matchNewLine();
                 return matchE();
-            } else if (hasToken(TokenReader.TokenType.varIdentifier) && extendedExpression) {
-                return matchA(matchTerm(TokenReader.TokenType.varIdentifier));
+            } else if (hasToken(TokenReader.TokenType.identifier) && extendedExpression) {
+                return matchA(matchTerm(TokenReader.TokenType.identifier));
             } else {
                 return matchE();
             }
@@ -600,13 +519,15 @@ public class CodEx {
         private IExpression<Double> matchA(TokenReader.Token identifier) {
             ATwoOperandExpression<Double> leftNew;
             if (hasLineEnd()) {
-                return new VariableExpression<Double>((String) identifier.value);
+                return new VariableExpression<Double>(identifier.value);
             }
             if (hasToken(TokenReader.TokenType.equals)) {
                 matchTerm(TokenReader.TokenType.equals);
-                return new VariableAssignment<Double>((String) identifier.value, matchE());
+                return new VariableAssignment<Double>(identifier.value, matchE());
+            } else if(hasToken(TokenReader.TokenType.lBracket)) {
+                return matchFuncCallRest(identifier);
             } else {
-                IExpression<Double> left = new VariableExpression<Double>((String) identifier.value);
+                IExpression<Double> left = new VariableExpression<Double>(identifier.value);
                 if (hasToken(TokenReader.TokenType.plus)) {
                     matchTerm(TokenReader.TokenType.plus);
                     leftNew = new AddExpressionFloat();
@@ -695,35 +616,84 @@ public class CodEx {
                 res = matchE();
                 matchTerm(TokenReader.TokenType.rBracket);
                 return res;
-            } else if (hasToken(TokenReader.TokenType.varIdentifier) && extendedExpression) {
-                token = matchTerm(TokenReader.TokenType.varIdentifier);
-                return new VariableExpression<Double>((String) token.value);
+            } else if (hasToken(TokenReader.TokenType.identifier) && extendedExpression) {
+                token = matchTerm(TokenReader.TokenType.identifier);
+                if(hasToken(TokenReader.TokenType.lBracket)){
+                    return matchFuncCallRest(token);
+                } else {
+                    return new VariableExpression<Double>(token.value);
+                }
             } else if (hasToken(TokenReader.TokenType.number)) {
                 token = matchTerm(TokenReader.TokenType.number);
-                return new ConstantExpression<Double>(Double.parseDouble((String) token.value));
-            } else if (hasToken(TokenReader.TokenType.funCall) && extendedExpression) {
-                token = matchTerm(TokenReader.TokenType.funCall);
-                TokenReader.FuncCallDescription funcCallDescription = (TokenReader.FuncCallDescription) token.value;
-                if (!functionsDefinition.containsKey(funcCallDescription.funcName)) {
-                    throw new BadExpressionFormatException("Unknown function:" + funcCallDescription.funcName);
-                }
-                return new FunctionCallExpression<Double>(functionsDefinition.get(funcCallDescription.funcName));
+                return new ConstantExpression<Double>(Double.parseDouble(token.value));
             }
             throw new BadExpressionFormatException("Unexpected token type.");
         }
 
+        private IExpression<Double> matchFuncCallRest(TokenReader.Token token) {
+            matchTerm(TokenReader.TokenType.lBracket);
+            if(!functionsDefinition.containsKey(token.value)){
+                throw new BadExpressionFormatException("Function by this name does not exist.");
+            }
+            ArrayList<IExpression<Double>> expressions = new ArrayList<IExpression<Double>>();
+            if(!hasToken(TokenReader.TokenType.rBracket)) {
+                expressions.add(matchArg());
+                matchExprListC(expressions);
+            }
+            matchTerm(TokenReader.TokenType.rBracket);
+            FunctionCallExpression<Double> functionCallExpression = new FunctionCallExpression<Double>(functionsDefinition.get(token.value));
+            if(functionCallExpression.getArity()!=expressions.size()){
+                throw new BadExpressionFormatException("Bad number of arguments.");
+            }
+            int i=0;
+            for(IExpression<Double> expression : expressions){
+                functionCallExpression.setOperand(i,expression);
+                ++i;
+            }
+            return functionCallExpression;
+        }
+
 
         private FunctionDefinition<Double> matchFN() {
-            TokenReader.Token token = matchTerm(TokenReader.TokenType.funCall);
-            TokenReader.FuncCallDescription callDescription = (TokenReader.FuncCallDescription) token.value;
-            ArrayList<String> arguments = new ArrayList<String>(callDescription.args.size());
-            for (TokenReader.Token argToken : callDescription.args) {
-                if (argToken.type != TokenReader.TokenType.varIdentifier) {
-                    throw new BadExpressionFormatException("Expected parameter name.");
-                }
-                arguments.add((String) argToken.value);
+            TokenReader.Token tokenIdentifier = matchTerm(TokenReader.TokenType.identifier);
+            matchTerm(TokenReader.TokenType.lBracket);
+            ArrayList<TokenReader.Token> arguments = new ArrayList<TokenReader.Token>();
+            if(!hasToken(TokenReader.TokenType.rBracket)) {
+                TokenReader.Token tokenFirstArg = matchTerm(TokenReader.TokenType.identifier);
+                arguments.add(tokenFirstArg);
+                matchVarListC(arguments);
             }
-            return new FunctionDefinition<Double>(callDescription.funcName, (String[]) arguments.toArray(), matchE());
+            matchTerm(TokenReader.TokenType.rBracket);
+            return new FunctionDefinition<Double>(tokenIdentifier.value, arguments, matchE());
+        }
+
+        private void matchExprListC(ArrayList<IExpression<Double>> arguments){
+            if(hasToken(TokenReader.TokenType.argSeparator)){
+                matchTerm(TokenReader.TokenType.argSeparator);
+                // arguments.add(matchE());
+                arguments.add(matchArg());
+                matchExprListC(arguments);
+            }
+        }
+
+        private void matchVarListC(ArrayList<TokenReader.Token> arguments){
+            if(hasToken(TokenReader.TokenType.argSeparator)){
+                matchTerm(TokenReader.TokenType.argSeparator);
+                TokenReader.Token arg = matchTerm(TokenReader.TokenType.identifier);
+                arguments.add(arg);
+                matchVarListC(arguments);
+            }
+        }
+
+        private IExpression<Double> matchArg(){
+            if (hasToken(TokenReader.TokenType.identifier) && extendedExpression) {
+                TokenReader.Token token = matchTerm(TokenReader.TokenType.identifier);
+                return new VariableExpression<Double>(token.value);
+            } else if (hasToken(TokenReader.TokenType.number)) {
+                TokenReader.Token token = matchTerm(TokenReader.TokenType.number);
+                return new ConstantExpression<Double>(Double.parseDouble(token.value));
+            }
+            throw new BadExpressionFormatException("Expected valid argument expression.");
         }
 
 
@@ -731,7 +701,7 @@ public class CodEx {
             return reader.matchToken(type);
         }
 
-        private void matchNewLine() {
+        private void matchNewLine() throws IOException {
             reader.skipNewLine();
         }
 
