@@ -44,7 +44,7 @@ public class CodEx {
             tokenHashMap.put(TokenType.rBracket, Pattern.compile(")",Pattern.LITERAL));
             tokenHashMap.put(TokenType.argSeparator, Pattern.compile(",",Pattern.LITERAL));
             funcArgsHashMap.put(TokenType.number, Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?"));
-            funcArgsHashMap.put(TokenType.identifier, Pattern.compile("[a-z]+"));
+            funcArgsHashMap.put(TokenType.identifier, Pattern.compile("[a-zA-Z]+"));
             newLinePattern = Pattern.compile("(\\r)?\\n");
             delimiterPattern = Pattern.compile("\\s+");
             tokenHashMap.putAll(funcArgsHashMap);
@@ -329,9 +329,9 @@ public class CodEx {
 
         @Override
         public T solve(IExpressionContext<T> context) {
-            ExpressionContextWrapper<T> expressionContextWrapper = new ExpressionContextWrapper<T>(context);
+            ExpressionContextWrapper<T> expressionContextWrapper = new ExpressionContextWrapper<T>(null);
             for (int i = 0; i < functionDefinition.getArgumentCount(); i++) {
-                expressionContextWrapper.setVariableValue(functionDefinition.getArgumentName(i), operands[i]);
+                expressionContextWrapper.setVariableValue(functionDefinition.getArgumentName(i), new ConstantExpression<T>(operands[i].solve(context)));
             }
             return functionDefinition.getFunctionExpression().solve(expressionContextWrapper);
         }
@@ -363,35 +363,63 @@ public class CodEx {
     public static class ExpressionContextWrapper<T> implements IExpressionContext<T> {
         private IExpressionContext<T> parent;
         private HashMap<String, IExpression<T>> variablesValues = new HashMap<String, IExpression<T>>();
+        private HashMap<String, FunctionDefinition<T>> functionsDefinition = new HashMap<String, FunctionDefinition<T>>();
 
         public ExpressionContextWrapper(IExpressionContext<T> parent) {
-            assert parent != null;
             this.parent = parent;
         }
 
         @Override
         public IExpression<T> getVariableValue(String varName) {
+            if(functionsDefinition.containsKey(varName)){
+                throw new BadExpressionFormatException("Function with same name already exists.");
+            }
+
             if (variablesValues.containsKey(varName)) {
                 return variablesValues.get(varName);
+            } else if(parent != null) {
+                return parent.getVariableValue(varName);
             }
-            return parent.getVariableValue(varName);
+            throw new BadExpressionFormatException("Unknown variable");
         }
 
         @Override
         public void setVariableValue(String varName, IExpression<T> expression) {
             if(!varName.equals("last")){
+                if(functionsDefinition.containsKey(varName)){
+                    throw new BadExpressionFormatException("Function with same name already exists.");
+                }
                 variablesValues.put(varName, expression);
             }
+        }
+
+        public boolean hasVariable(String varName){
+            return variablesValues.containsKey(varName);
+        }
+
+        public void registerFunction(FunctionDefinition<T> functionDefinition){
+            if(hasVariable(functionDefinition.getFuncName()) || functionDefinition.getFuncName().equals("last")){
+                throw new BadExpressionFormatException("Variable with same name already exists.");
+            } else{
+                functionsDefinition.put(functionDefinition.getFuncName(),functionDefinition);
+            }
+        }
+
+        public FunctionDefinition<T> getFunction(String value) {
+            if(!functionsDefinition.containsKey(value)){
+                throw new BadExpressionFormatException("Function by this name does not exist.");
+            }
+            return functionsDefinition.get(value);
         }
     }
 
     public static class FloatExpression implements IExpressionContext<Double> {
         private boolean extendedExpression = true;
         private double last = 0;
-        private HashMap<String, FunctionDefinition<Double>> functionsDefinition = new HashMap<String, FunctionDefinition<Double>>();
         private ExpressionContextWrapper<Double> contextWrapper;
-
-        TokenReader reader;
+        private TokenReader reader;
+        private boolean inFuncDef = false;
+        private ArrayList<String> funcArgs = new ArrayList<String>();
 
         @Override
         public IExpression<Double> getVariableValue(String varName) {
@@ -506,9 +534,9 @@ public class CodEx {
                 last = 0;
                 matchTerm(TokenReader.TokenType.def);
                 FunctionDefinition<Double> functionDefinition = matchFN();
-                functionsDefinition.put(functionDefinition.getFuncName(), functionDefinition);
+                contextWrapper.registerFunction(functionDefinition);
                 matchNewLine();
-                return matchE();
+                return matchS();
             } else if (hasToken(TokenReader.TokenType.identifier) && extendedExpression) {
                 return matchA(matchTerm(TokenReader.TokenType.identifier));
             } else {
@@ -616,11 +644,14 @@ public class CodEx {
                 res = matchE();
                 matchTerm(TokenReader.TokenType.rBracket);
                 return res;
-            } else if (hasToken(TokenReader.TokenType.identifier) && extendedExpression) {
+            } else if (hasToken(TokenReader.TokenType.identifier) && extendedExpression ) {
                 token = matchTerm(TokenReader.TokenType.identifier);
-                if(hasToken(TokenReader.TokenType.lBracket)){
+                if(hasToken(TokenReader.TokenType.lBracket) && !inFuncDef){
                     return matchFuncCallRest(token);
                 } else {
+                    if(inFuncDef && !funcArgs.contains(token.value)){
+                        throw new BadExpressionFormatException("Can't use variables in function.");
+                    }
                     return new VariableExpression<Double>(token.value);
                 }
             } else if (hasToken(TokenReader.TokenType.number)) {
@@ -632,22 +663,19 @@ public class CodEx {
 
         private IExpression<Double> matchFuncCallRest(TokenReader.Token token) {
             matchTerm(TokenReader.TokenType.lBracket);
-            if(!functionsDefinition.containsKey(token.value)){
-                throw new BadExpressionFormatException("Function by this name does not exist.");
-            }
             ArrayList<IExpression<Double>> expressions = new ArrayList<IExpression<Double>>();
             if(!hasToken(TokenReader.TokenType.rBracket)) {
                 expressions.add(matchArg());
                 matchExprListC(expressions);
             }
             matchTerm(TokenReader.TokenType.rBracket);
-            FunctionCallExpression<Double> functionCallExpression = new FunctionCallExpression<Double>(functionsDefinition.get(token.value));
+            FunctionCallExpression<Double> functionCallExpression = new FunctionCallExpression<Double>(contextWrapper.getFunction(token.value));
             if(functionCallExpression.getArity()!=expressions.size()){
                 throw new BadExpressionFormatException("Bad number of arguments.");
             }
             int i=0;
             for(IExpression<Double> expression : expressions){
-                functionCallExpression.setOperand(i,expression);
+                functionCallExpression.setOperand(i, expression);
                 ++i;
             }
             return functionCallExpression;
@@ -655,16 +683,32 @@ public class CodEx {
 
 
         private FunctionDefinition<Double> matchFN() {
-            TokenReader.Token tokenIdentifier = matchTerm(TokenReader.TokenType.identifier);
-            matchTerm(TokenReader.TokenType.lBracket);
-            ArrayList<TokenReader.Token> arguments = new ArrayList<TokenReader.Token>();
-            if(!hasToken(TokenReader.TokenType.rBracket)) {
-                TokenReader.Token tokenFirstArg = matchTerm(TokenReader.TokenType.identifier);
-                arguments.add(tokenFirstArg);
-                matchVarListC(arguments);
+            inFuncDef = true;
+            try {
+                TokenReader.Token tokenIdentifier = matchTerm(TokenReader.TokenType.identifier);
+                matchTerm(TokenReader.TokenType.lBracket);
+                ArrayList<TokenReader.Token> arguments = new ArrayList<TokenReader.Token>();
+                if (!hasToken(TokenReader.TokenType.rBracket)) {
+                    TokenReader.Token tokenFirstArg = matchTerm(TokenReader.TokenType.identifier);
+                    checkArgName(tokenFirstArg);
+                    arguments.add(tokenFirstArg);
+                    matchVarListC(arguments);
+                }
+                for(TokenReader.Token token : arguments){
+                    funcArgs.add(token.value);
+                }
+                matchTerm(TokenReader.TokenType.rBracket);
+                return new FunctionDefinition<Double>(tokenIdentifier.value, arguments, matchE());
+            } finally {
+                inFuncDef = false;
+                funcArgs.clear();
             }
-            matchTerm(TokenReader.TokenType.rBracket);
-            return new FunctionDefinition<Double>(tokenIdentifier.value, arguments, matchE());
+        }
+
+        private void checkArgName(TokenReader.Token tokenFirstArg) {
+            if(tokenFirstArg.value.length()!=1){
+                throw new BadExpressionFormatException("Name of argument can be just one character.");
+            }
         }
 
         private void matchExprListC(ArrayList<IExpression<Double>> arguments){
@@ -680,13 +724,14 @@ public class CodEx {
             if(hasToken(TokenReader.TokenType.argSeparator)){
                 matchTerm(TokenReader.TokenType.argSeparator);
                 TokenReader.Token arg = matchTerm(TokenReader.TokenType.identifier);
+                checkArgName(arg);
                 arguments.add(arg);
                 matchVarListC(arguments);
             }
         }
 
         private IExpression<Double> matchArg(){
-            if (hasToken(TokenReader.TokenType.identifier) && extendedExpression) {
+            if (hasToken(TokenReader.TokenType.identifier) && extendedExpression ) {
                 TokenReader.Token token = matchTerm(TokenReader.TokenType.identifier);
                 return new VariableExpression<Double>(token.value);
             } else if (hasToken(TokenReader.TokenType.number)) {
