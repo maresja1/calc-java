@@ -560,16 +560,16 @@ public class CodEx {
 
         private IExpression<BigDecimal> matchA(TokenReader.Token identifier) {
             ATwoOperandExpression<BigDecimal> leftNew;
-            if (hasLineEnd()) {
-                return new VariableExpression<BigDecimal>(identifier.value);
-            }
             if (hasToken(TokenReader.TokenType.equals)) {
                 matchTerm(TokenReader.TokenType.equals);
                 return new VariableAssignment<BigDecimal>(identifier.value, matchE());
-            } else if(hasToken(TokenReader.TokenType.lBracket)) {
-                return matchFuncCallRest(identifier);
             } else {
-                IExpression<BigDecimal> left = new VariableExpression<BigDecimal>(identifier.value);
+                IExpression<BigDecimal> left;
+                if(hasToken(TokenReader.TokenType.lBracket)) {
+                    left = matchFuncCallRest(identifier);
+                } else {
+                    left = new VariableExpression<BigDecimal>(identifier.value);
+                }
                 if (hasToken(TokenReader.TokenType.plus)) {
                     matchTerm(TokenReader.TokenType.plus);
                     leftNew = new AddExpressionFloat();
@@ -793,7 +793,7 @@ public class CodEx {
                     if(expression == null){
                         break;
                     }
-                    out.println(parser.solveExpression(expression).stripTrailingZeros().toPlainString());
+                    out.println(parser.solveExpression(expression).stripTrailingZeros().toPlainString(                    out.println(parser.solveExpression(expression).stripTrailingZeros().toPlainString());
                 } catch (BadExpressionFormatException e){
                     if(debugMode){
                         throw e;
