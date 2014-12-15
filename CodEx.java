@@ -546,16 +546,16 @@ public class CodEx {
 
         private IExpression<Double> matchA(TokenReader.Token identifier) {
             ATwoOperandExpression<Double> leftNew;
-            if (hasLineEnd()) {
-                return new VariableExpression<Double>(identifier.value);
-            }
             if (hasToken(TokenReader.TokenType.equals)) {
                 matchTerm(TokenReader.TokenType.equals);
                 return new VariableAssignment<Double>(identifier.value, matchE());
-            } else if(hasToken(TokenReader.TokenType.lBracket)) {
-                return matchFuncCallRest(identifier);
             } else {
-                IExpression<Double> left = new VariableExpression<Double>(identifier.value);
+                IExpression<Double> left;
+                if(hasToken(TokenReader.TokenType.lBracket)) {
+                    left = matchFuncCallRest(identifier);
+                } else {
+                    left = new VariableExpression<Double>(identifier.value);
+                }
                 if (hasToken(TokenReader.TokenType.plus)) {
                     matchTerm(TokenReader.TokenType.plus);
                     leftNew = new AddExpressionFloat();
@@ -583,7 +583,8 @@ public class CodEx {
                     leftNew.setOperand(0, left);
                     leftNew.setOperand(1, matchF());
                     return matchTa(leftNew);
-
+                } else if(hasLineEnd()){
+                    return left;
                 }
             }
             throw new BadExpressionFormatException();
