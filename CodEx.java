@@ -2,6 +2,7 @@
 
 import java.io.*;
 import java.io.BufferedReader;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,6 +44,7 @@ public class CodEx {
             tokenHashMap.put(TokenType.lBracket, Pattern.compile("(",Pattern.LITERAL));
             tokenHashMap.put(TokenType.rBracket, Pattern.compile(")",Pattern.LITERAL));
             tokenHashMap.put(TokenType.argSeparator, Pattern.compile(",",Pattern.LITERAL));
+            tokenHashMap.put(TokenType.precisionKey, Pattern.compile("precision",Pattern.LITERAL));
             funcArgsHashMap.put(TokenType.number, Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?"));
             funcArgsHashMap.put(TokenType.identifier, Pattern.compile("[a-zA-Z]+"));
             newLinePattern = Pattern.compile("(\\r)?\\n");
@@ -69,7 +71,8 @@ public class CodEx {
             def,
             identifier,
             number,
-            argSeparator
+            argSeparator,
+            precisionKey
         }
 
         public static class Token {
@@ -413,33 +416,34 @@ public class CodEx {
         }
     }
 
-    public static class FloatExpression implements IExpressionContext<Double> {
+    public static class FloatExpression implements IExpressionContext<BigDecimal> {
         private boolean extendedExpression = true;
-        private double last = 0;
-        private ExpressionContextWrapper<Double> contextWrapper;
+        private BigDecimal last = BigDecimal.ZERO;
+        private int precision = 20;
+        private ExpressionContextWrapper<BigDecimal> contextWrapper;
         private TokenReader reader;
         private boolean inFuncDef = false;
         private ArrayList<String> funcArgs = new ArrayList<String>();
 
         @Override
-        public IExpression<Double> getVariableValue(String varName) {
+        public IExpression<BigDecimal> getVariableValue(String varName) {
             if (varName.equals("last")) {
-                return new ConstantExpression<Double>(last);
+                return new ConstantExpression<BigDecimal>(last);
             } else {
-                return new ConstantExpression<Double>(0.0);
+                return new ConstantExpression<BigDecimal>(BigDecimal.ZERO);
             }
         }
 
         @Override
-        public void setVariableValue(String varName, IExpression<Double> expression) {
+        public void setVariableValue(String varName, IExpression<BigDecimal> expression) {
             throw new BadExpressionFormatException();
         }
 
 
-        private static class AddExpressionFloat extends ATwoOperandExpression<Double> {
+        private static class AddExpressionFloat extends ATwoOperandExpression<BigDecimal> {
             @Override
-            protected Double doOperation(Double operand1, Double operand2) {
-                return operand1 + operand2;
+            protected BigDecimal doOperation(BigDecimal operand1, BigDecimal operand2) {
+                return operand1.add(operand2);
             }
 
             @Override
@@ -448,10 +452,10 @@ public class CodEx {
             }
         }
 
-        private static class SubExpressionFloat extends ATwoOperandExpression<Double> {
+        private static class SubExpressionFloat extends ATwoOperandExpression<BigDecimal> {
             @Override
-            protected Double doOperation(Double operand1, Double operand2) {
-                return operand1 - operand2;
+            protected BigDecimal doOperation(BigDecimal operand1, BigDecimal operand2) {
+                return operand1.subtract(operand2);
             }
 
             @Override
@@ -460,10 +464,10 @@ public class CodEx {
             }
         }
 
-        private static class MulExpressionFloat extends ATwoOperandExpression<Double> {
+        private static class MulExpressionFloat extends ATwoOperandExpression<BigDecimal> {
             @Override
-            protected Double doOperation(Double operand1, Double operand2) {
-                return operand1 * operand2;
+            protected BigDecimal doOperation(BigDecimal operand1, BigDecimal operand2) {
+                return operand1.multiply(operand2);
             }
 
             @Override
@@ -472,13 +476,13 @@ public class CodEx {
             }
         }
 
-        private static class DivExpressionFloat extends ATwoOperandExpression<Double> {
+        private static class DivExpressionFloat extends ATwoOperandExpression<BigDecimal> {
             @Override
-            protected Double doOperation(Double operand1, Double operand2) {
-                if(operand2 == 0){
+            protected BigDecimal doOperation(BigDecimal operand1, BigDecimal operand2) {
+                if(operand2.equals(BigDecimal.ZERO)){
                     throw new BadExpressionFormatException("Division by zero");
                 }
-                return operand1 / operand2;
+                return operand1.divide(operand2,BigDecimal.ROUND_HALF_UP);
             }
 
             @Override
@@ -502,38 +506,48 @@ public class CodEx {
 
         public FloatExpression(TokenReader reader) {
             this.reader = reader;
-            contextWrapper = new ExpressionContextWrapper<Double>(FloatExpression.this);
+            contextWrapper = new ExpressionContextWrapper<BigDecimal>(FloatExpression.this);
         }
 
-        public IExpression<Double> readExpression() throws IOException {
+        public IExpression<BigDecimal> readExpression() throws IOException {
             try{
-                IExpression<Double> expression = matchS();
+                IExpression<BigDecimal> expression = matchS();
                 if(!hasFileEnd()){
                     matchNewLine();
                 }
                 return expression;
             } catch (BadExpressionFormatException e){
-                last = 0;
+                last = BigDecimal.ZERO;
                 reader.skipRestOfLine();
                 throw e;
             }
         }
 
-        public Double solveExpression(IExpression<Double> expression) {
+        public BigDecimal solveExpression(IExpression<BigDecimal> expression) {
             last = expression.solve(contextWrapper);
             return last;
         }
 
-        private IExpression<Double> matchS() throws IOException {
+        private IExpression<BigDecimal> matchS() throws IOException {
             if (hasFileEnd()) {
                 return null;
-            }else if(hasLineEnd()) {
+            } else if(hasLineEnd()) {
                 matchNewLine();
                 return matchS();
+            } else if(hasToken(TokenReader.TokenType.precisionKey)){
+                matchTerm(TokenReader.TokenType.precisionKey);
+                TokenReader.Token number = matchTerm(TokenReader.TokenType.number);
+                matchNewLine();
+                try{
+                    precision = Integer.parseInt(number.value);
+                } catch (NumberFormatException e){
+                    throw new BadExpressionFormatException("Bad precision argument");
+                }
+                return matchS();
             } else if (hasToken(TokenReader.TokenType.def) && extendedExpression) {
-                last = 0;
+                last = BigDecimal.ZERO;
                 matchTerm(TokenReader.TokenType.def);
-                FunctionDefinition<Double> functionDefinition = matchFN();
+                FunctionDefinition<BigDecimal> functionDefinition = matchFN();
                 contextWrapper.registerFunction(functionDefinition);
                 matchNewLine();
                 return matchS();
@@ -544,18 +558,18 @@ public class CodEx {
             }
         }
 
-        private IExpression<Double> matchA(TokenReader.Token identifier) {
-            ATwoOperandExpression<Double> leftNew;
+        private IExpression<BigDecimal> matchA(TokenReader.Token identifier) {
+            ATwoOperandExpression<BigDecimal> leftNew;
             if (hasLineEnd()) {
-                return new VariableExpression<Double>(identifier.value);
+                return new VariableExpression<BigDecimal>(identifier.value);
             }
             if (hasToken(TokenReader.TokenType.equals)) {
                 matchTerm(TokenReader.TokenType.equals);
-                return new VariableAssignment<Double>(identifier.value, matchE());
+                return new VariableAssignment<BigDecimal>(identifier.value, matchE());
             } else if(hasToken(TokenReader.TokenType.lBracket)) {
                 return matchFuncCallRest(identifier);
             } else {
-                IExpression<Double> left = new VariableExpression<Double>(identifier.value);
+                IExpression<BigDecimal> left = new VariableExpression<BigDecimal>(identifier.value);
                 if (hasToken(TokenReader.TokenType.plus)) {
                     matchTerm(TokenReader.TokenType.plus);
                     leftNew = new AddExpressionFloat();
@@ -589,13 +603,13 @@ public class CodEx {
             throw new BadExpressionFormatException();
         }
 
-        private IExpression<Double> matchE() {
-            IExpression<Double> left = matchT();
+        private IExpression<BigDecimal> matchE() {
+            IExpression<BigDecimal> left = matchT();
             return matchEa(left);
         }
 
-        private IExpression<Double> matchEa(IExpression<Double> left) {
-            ATwoOperandExpression<Double> leftNew;
+        private IExpression<BigDecimal> matchEa(IExpression<BigDecimal> left) {
+            ATwoOperandExpression<BigDecimal> leftNew;
             if (hasToken(TokenReader.TokenType.plus)) {
                 matchTerm(TokenReader.TokenType.plus);
                 leftNew = new AddExpressionFloat();
@@ -612,13 +626,13 @@ public class CodEx {
             return left;
         }
 
-        private IExpression<Double> matchT() {
-            IExpression<Double> left = matchF();
+        private IExpression<BigDecimal> matchT() {
+            IExpression<BigDecimal> left = matchF();
             return matchTa(left);
         }
 
-        private IExpression<Double> matchTa(IExpression<Double> left) {
-            ATwoOperandExpression<Double> leftNew;
+        private IExpression<BigDecimal> matchTa(IExpression<BigDecimal> left) {
+            ATwoOperandExpression<BigDecimal> leftNew;
             if (hasToken(TokenReader.TokenType.asterisk)) {
                 matchTerm(TokenReader.TokenType.asterisk);
                 leftNew = new MulExpressionFloat();
@@ -636,8 +650,8 @@ public class CodEx {
         }
 
 
-        private IExpression<Double> matchF() {
-            IExpression<Double> res;
+        private IExpression<BigDecimal> matchF() {
+            IExpression<BigDecimal> res;
             TokenReader.Token token;
             if (hasToken(TokenReader.TokenType.lBracket)) {
                 matchTerm(TokenReader.TokenType.lBracket);
@@ -652,29 +666,29 @@ public class CodEx {
                     if(inFuncDef && !funcArgs.contains(token.value)){
                         throw new BadExpressionFormatException("Can't use variables in function.");
                     }
-                    return new VariableExpression<Double>(token.value);
+                    return new VariableExpression<BigDecimal>(token.value);
                 }
             } else if (hasToken(TokenReader.TokenType.number)) {
                 token = matchTerm(TokenReader.TokenType.number);
-                return new ConstantExpression<Double>(Double.parseDouble(token.value));
+                return new ConstantExpression<BigDecimal>(new BigDecimal(token.value).setScale(precision,BigDecimal.ROUND_HALF_UP));
             }
             throw new BadExpressionFormatException("Unexpected token type.");
         }
 
-        private IExpression<Double> matchFuncCallRest(TokenReader.Token token) {
+        private IExpression<BigDecimal> matchFuncCallRest(TokenReader.Token token) {
             matchTerm(TokenReader.TokenType.lBracket);
-            ArrayList<IExpression<Double>> expressions = new ArrayList<IExpression<Double>>();
+            ArrayList<IExpression<BigDecimal>> expressions = new ArrayList<IExpression<BigDecimal>>();
             if(!hasToken(TokenReader.TokenType.rBracket)) {
                 expressions.add(matchArg());
                 matchExprListC(expressions);
             }
             matchTerm(TokenReader.TokenType.rBracket);
-            FunctionCallExpression<Double> functionCallExpression = new FunctionCallExpression<Double>(contextWrapper.getFunction(token.value));
+            FunctionCallExpression<BigDecimal> functionCallExpression = new FunctionCallExpression<BigDecimal>(contextWrapper.getFunction(token.value));
             if(functionCallExpression.getArity()!=expressions.size()){
                 throw new BadExpressionFormatException("Bad number of arguments.");
             }
             int i=0;
-            for(IExpression<Double> expression : expressions){
+            for(IExpression<BigDecimal> expression : expressions){
                 functionCallExpression.setOperand(i, expression);
                 ++i;
             }
@@ -682,7 +696,7 @@ public class CodEx {
         }
 
 
-        private FunctionDefinition<Double> matchFN() {
+        private FunctionDefinition<BigDecimal> matchFN() {
             inFuncDef = true;
             try {
                 TokenReader.Token tokenIdentifier = matchTerm(TokenReader.TokenType.identifier);
@@ -698,7 +712,7 @@ public class CodEx {
                     funcArgs.add(token.value);
                 }
                 matchTerm(TokenReader.TokenType.rBracket);
-                return new FunctionDefinition<Double>(tokenIdentifier.value, arguments, matchE());
+                return new FunctionDefinition<BigDecimal>(tokenIdentifier.value, arguments, matchE());
             } finally {
                 inFuncDef = false;
                 funcArgs.clear();
@@ -711,7 +725,7 @@ public class CodEx {
             }
         }
 
-        private void matchExprListC(ArrayList<IExpression<Double>> arguments){
+        private void matchExprListC(ArrayList<IExpression<BigDecimal>> arguments){
             if(hasToken(TokenReader.TokenType.argSeparator)){
                 matchTerm(TokenReader.TokenType.argSeparator);
                 // arguments.add(matchE());
@@ -730,13 +744,13 @@ public class CodEx {
             }
         }
 
-        private IExpression<Double> matchArg(){
+        private IExpression<BigDecimal> matchArg(){
             if (hasToken(TokenReader.TokenType.identifier) && extendedExpression ) {
                 TokenReader.Token token = matchTerm(TokenReader.TokenType.identifier);
-                return new VariableExpression<Double>(token.value);
+                return new VariableExpression<BigDecimal>(token.value);
             } else if (hasToken(TokenReader.TokenType.number)) {
                 TokenReader.Token token = matchTerm(TokenReader.TokenType.number);
-                return new ConstantExpression<Double>(Double.parseDouble(token.value));
+                return new ConstantExpression<BigDecimal>(new BigDecimal(token.value).setScale(precision,BigDecimal.ROUND_HALF_UP));
             }
             throw new BadExpressionFormatException("Expected valid argument expression.");
         }
@@ -761,6 +775,10 @@ public class CodEx {
         private boolean hasFileEnd(){
             return reader.hasFileEnd();
         }
+
+        public int getPrecision() {
+            return precision;
+        }
     }
 
     public static class Calc {
@@ -771,11 +789,11 @@ public class CodEx {
             FloatExpression parser = new FloatExpression(tokenReader);
             for (; ; ) {
                 try{
-                    IExpression<Double> expression = parser.readExpression();
+                    IExpression<BigDecimal> expression = parser.readExpression();
                     if(expression == null){
                         break;
                     }
-                    out.printf("%.5f\n", parser.solveExpression(expression));
+                    out.println(parser.solveExpression(expression).stripTrailingZeros().toPlainString());
                 } catch (BadExpressionFormatException e){
                     if(debugMode){
                         throw e;
