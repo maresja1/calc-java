@@ -1,0 +1,12 @@
+ahoj
+asd = asd + 1
+asd=1+2
+ahoj = 1-2
+last = x+ahoj
+3 ** 5
+DEF sqr(a) a * a
+sqr(5)
+DEF foo(a,b) 2*a + 2*b
+last
+foo(x,y)
+8/(2-2)
