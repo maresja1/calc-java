@@ -36,11 +36,7 @@ public class SemesterTest {
 
     @Test
     public void testSemiColon() throws IOException {
-        TokenReader reader = createReader("\n\n\n(7);;;\n(8);;;");
-        FloatSolver floatExpression = new FloatSolver(reader);
-        Assert.assertEquals(7.0, floatExpression.solveExpression(floatExpression.readExpression()));;
-        Assert.assertEquals(8.0, floatExpression.solveExpression(floatExpression.readExpression()));;
-        Assert.assertEquals(null, floatExpression.readExpression());;
+        testValidExpressions("\n\n\n(7);;;\n(8);;;", 7.0, 8.0);
     }
 
     @Test(expected = BadExpressionFormatException.class)
@@ -58,4 +54,18 @@ public class SemesterTest {
                              "func_2(1, func(2, 3, func_2(8, 2)))*14;\n" +
                              "func_2(sqr(last), last);", 25.0, 1.0, 1.0);
     }
+
+    @Test
+    public void testGlobalVariable () throws IOException {
+        testValidExpressions("a = 10;" +
+                             "DEF addToA(b) a + b;\n" +
+                             "addToA(0);" +
+                             "a = addToA(last); addToA(1);", 10.0, 10.0, 20.0, 21.0);
+    }
+
+    /*
+    @Test
+    public void testFor () throws IOException {
+        testValidExpressions();
+    }*/
 }
