@@ -1,3 +1,4 @@
+import exception.BadExpressionFormatException;
 import executing.FloatSolver;
 import org.junit.Assert;
 import org.junit.Test;
@@ -31,6 +32,21 @@ public class SemesterTest {
                 "DEF sqr(a) a * a;\n" +
                         "sqr(5+4);\n",
                 81.0);
+    }
+
+    @Test
+    public void testSemiColon() throws IOException {
+        TokenReader reader = createReader("\n\n\n(7);;;\n(8);;;");
+        FloatSolver floatExpression = new FloatSolver(reader);
+        Assert.assertEquals(7.0, floatExpression.solveExpression(floatExpression.readExpression()));;
+        Assert.assertEquals(8.0, floatExpression.solveExpression(floatExpression.readExpression()));;
+        Assert.assertEquals(null, floatExpression.readExpression());;
+    }
+
+    @Test(expected = BadExpressionFormatException.class)
+    public void testSemiColon_2() throws IOException
+    {
+        testValidExpressions("2 +3 \n 5*4", 0.0);
     }
 
     @Test
