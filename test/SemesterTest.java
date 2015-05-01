@@ -1,5 +1,4 @@
 import executing.FloatSolver;
-import expression.IExpression;
 import org.junit.Assert;
 import org.junit.Test;
 import parsing.TokenReader;
@@ -16,40 +15,31 @@ public class SemesterTest {
         return new TokenReader(new StringReader(string));
     }
 
-    private static void testFirstValidExpression(String expressionString, Double value) throws IOException {
+    private static void testValidExpressions(String expressionString, Double... values) throws IOException {
         TokenReader reader = createReader(expressionString);
         FloatSolver floatSolver = new FloatSolver(reader);
-        BigDecimal result = floatSolver.solveExpression(floatSolver.readExpression());
-        Assert.assertEquals(new BigDecimal(value).setScale(floatSolver.getPrecision(),BigDecimal.ROUND_HALF_UP), result);
+        for (int i = 0; i < values.length; ++i)
+        {
+            Assert.assertEquals(new BigDecimal(values[i]).setScale(floatSolver.getPrecision(),BigDecimal.ROUND_HALF_UP), floatSolver.solveExpression(floatSolver.readExpression()));
+        }
+        Assert.assertEquals(null, floatSolver.solveExpression(floatSolver.readExpression()));
     }
 
     @Test
-    public void testFunctionDefinition() throws IOException {
-        testFirstValidExpression(
-                "DEF sqr(a) a * a\n" +
-                        "sqr(5+4)\n",
+    public void testFunctionDefinition () throws IOException {
+        testValidExpressions(
+                "DEF sqr(a) a * a;\n" +
+                        "sqr(5+4);\n",
                 81.0);
     }
 
     @Test
-    public void testCompoundStatement() throws IOException {
-        TokenReader reader = createReader(
-                "DEF sqr(a) { b = a * a\n  b }\n" +
-                        "sqr(5)\n"
-        );
-        FloatSolver floatSolver = new FloatSolver(reader);
-        IExpression<BigDecimal> expression = floatSolver.readExpression();
-        Assert.assertEquals(new BigDecimal(25), expression.solve(floatSolver));
+    public void testCompoundStatement () throws IOException {
+        testValidExpressions("DEF sqr(a) { b = a * a;  b; }\n" +
+                             "sqr(5);\n" +
+                             "DEF func(a, b, c) {a + b*c}\n" +
+                             "DEF func_2 (a, b) {a/b}\n" +
+                             "func_2(1, func(2, 3, func_2(8, 2)))*14;\n" +
+                             "func_2(sqr(last), last);", 25.0, 1.0, 1.0);
     }
-
-    @Test
-    public void testCompoundStatement_2() throws IOException {
-        TokenReader reader = createReader("DEF func(a, b, c) {a + b*c}\n" +
-                                          "DEF func_2 (a, b) {a/b}\n" +
-                                          "func_2(1, func(2, 3, func_2(8, 2)))");
-        FloatSolver floatSolver = new FloatSolver(reader);
-        IExpression<BigDecimal> expression = floatSolver.readExpression();
-
-    }
-
 }
