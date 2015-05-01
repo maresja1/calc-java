@@ -97,14 +97,17 @@ public class TokenReader{
     }
 
     private void fillBuffer() throws IOException {
-        String line = readBuffer(in,delimiter);
-        if(line == null){
-            EOF = true;
-        } else {
-            buffer = whiteCharPattern.split(line);
-            posInBuffer = 0;
-            posInWord = 0;
-        }
+        do {
+            String line = readBuffer(in, delimiter);
+            if (line == null) {
+                EOF = true;
+                return;
+            } else {
+                buffer = whiteCharPattern.split(line);
+                posInBuffer = 0;
+                posInWord = 0;
+            }
+        }while(buffer.length == 0);
     }
 
     private String getActualWord(){
@@ -149,15 +152,14 @@ public class TokenReader{
 
     public boolean hasDelimiter(){
         getActualWord();
-        return posInBuffer == buffer.length;
+        return posInBuffer == buffer.length - 1 && buffer[posInBuffer].charAt(posInWord) == delimiter;
     }
 
     public void skipRestToDelimiter() throws IOException {
         fillBuffer();
     }
     public void skipDelimiter() throws IOException {
-        getActualWord();
-        if(posInBuffer == buffer.length){
+        if(hasDelimiter()){
             fillBuffer();
         } else {
             throw new BadExpressionFormatException("Expected line end");

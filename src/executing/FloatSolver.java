@@ -282,9 +282,9 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
             if(hasToken(TokenReader.TokenType.lBracket) && !inFuncDef){
                 return matchFuncCallRest(token);
             } else {
-                if(inFuncDef && !funcArgs.contains(token.value)){
-                    throw new BadExpressionFormatException("Can't use variables in function.");
-                }
+//                if(inFuncDef && !funcArgs.contains(token.value)){
+//                    throw new BadExpressionFormatException("Can't use variables in function.");
+//                }
                 return new VariableExpression<BigDecimal>(token.value);
             }
         } else if (hasToken(TokenReader.TokenType.number)) {
