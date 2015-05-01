@@ -12,18 +12,23 @@ import java.math.BigDecimal;
  * Created by Tom on 5.4.15.
  */
 public class SemesterTest {
-    private TokenReader createReader(String string){
+    private static TokenReader createReader(String string){
         return new TokenReader(new StringReader(string));
+    }
+
+    private static void testFirstValidExpression(String expressionString, Double value) throws IOException {
+        TokenReader reader = createReader(expressionString);
+        FloatSolver floatSolver = new FloatSolver(reader);
+        BigDecimal result = floatSolver.solveExpression(floatSolver.readExpression());
+        Assert.assertEquals(new BigDecimal(value).setScale(floatSolver.getPrecision(),BigDecimal.ROUND_HALF_UP), result);
     }
 
     @Test
     public void testFunctionDefinition() throws IOException {
-        TokenReader reader = createReader(
+        testFirstValidExpression(
                 "DEF sqr(a) a * a\n" +
-                        "sqr(5+4)\n"
-        );
-        FloatSolver floatExpression = new FloatSolver(reader);
-        Assert.assertEquals(null, floatExpression.readExpression());
+                        "sqr(5+4)\n",
+                81.0);
     }
 
     @Test
