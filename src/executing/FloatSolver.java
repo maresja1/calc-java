@@ -89,10 +89,10 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
     }
 
 //        S -> def id(VarList) E \n E | id A | E
-//        A -> = E | + HEa | - HEa | * TF | / TF
-//        E -> HEa
+//        A -> = E | + TEa | - TEa | * TF | / TF
+//        E -> TEa
 //        Ea -> + TEa | /\
-//        T -> DTa
+//        T -> FTa
 //        Ta -> * TF | / TF | /\
 //        F -> (E) | num | id | id (Arglist)
 //        Arglist -> (E ArglistC)
@@ -327,8 +327,8 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
     private void matchExprListC(ArrayList<IExpression<BigDecimal>> arguments){
         if(hasToken(TokenReader.TokenType.argSeparator)){
             matchTerm(TokenReader.TokenType.argSeparator);
-            // arguments.add(matchE());
-            arguments.add(matchArg());
+            arguments.add(matchE());
+//            arguments.add(matchArg());
             matchExprListC(arguments);
         }
     }

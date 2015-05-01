@@ -124,7 +124,7 @@ public class TokenReader{
         if(matcher.lookingAt()){
             return matcher;
         } else {
-            throw new BadExpressionFormatException("Unexpected token");
+            throw new BadExpressionFormatException("Unexpected token near " + actualWord.substring(posInWord));
         }
     }
 
