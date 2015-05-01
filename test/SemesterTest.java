@@ -42,4 +42,14 @@ public class SemesterTest {
         Assert.assertEquals(new BigDecimal(25), expression.solve(floatSolver));
     }
 
+    @Test
+    public void testCompoundStatement_2() throws IOException {
+        TokenReader reader = createReader("DEF func(a, b, c) {a + b*c}\n" +
+                                          "DEF func_2 (a, b) {a/b}\n" +
+                                          "func_2(1, func(2, 3, func_2(8, 2)))");
+        FloatSolver floatSolver = new FloatSolver(reader);
+        IExpression<BigDecimal> expression = floatSolver.readExpression();
+
+    }
+
 }
