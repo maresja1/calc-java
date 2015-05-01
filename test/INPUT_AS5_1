@@ -5,7 +5,11 @@ precision 30
 200 / 3
 3 ** 5
 last * 3
-DEF sqr(a) a * a
+DEF sqr(a) {
+ b = a * a
+ b = b + 2
+ b
+}
 sqr(5)
 DEF foo(a,b) a / b
 foo(1,7)
