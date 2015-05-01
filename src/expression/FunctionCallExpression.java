@@ -33,10 +33,10 @@ public class FunctionCallExpression<T> implements IOperandExpression<T> {
 
     @Override
     public T solve(IExpressionContext<T> context) {
-        ExpressionContextWrapper<T> expressionContextWrapper = new ExpressionContextWrapper<T>(null);
+        ExpressionContextWrapper<T> expressionContextWrapper = new ExpressionContextWrapper<T>(context);
         for (int i = 0; i < functionDefinition.getArgumentCount(); i++) {
             expressionContextWrapper.setVariableValue(functionDefinition.getArgumentName(i), new ConstantExpression<T>(operands[i].solve(context)));
         }
-        return functionDefinition.getFunctionExpression().solve(expressionContextWrapper);
+        return context.postProcess(functionDefinition.getFunctionExpression().solve(expressionContextWrapper));
     }
 }

@@ -36,6 +36,11 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
         throw new BadExpressionFormatException();
     }
 
+    @Override
+    public BigDecimal postProcess(BigDecimal result) {
+        return result.setScale(precision,BigDecimal.ROUND_HALF_UP);
+    }
+
 
     private static class AddExpressionFloat extends ATwoOperandExpression<BigDecimal> {
         @Override
@@ -88,9 +93,11 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
         }
     }
 
-//        S -> def id(VarList) E \n E | id A | E
+//        S -> def id(VarList) E ; E | id A | E
 //        A -> = E | + TEa | - TEa | * TF | / TF
-//        E -> TEa
+//        E -> Es | { EsList }
+//        EsList -> Es, EsList
+//        Es -> TEa
 //        Ea -> + TEa | /\
 //        T -> FTa
 //        Ta -> * TF | / TF | /\
@@ -110,12 +117,12 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
         try{
             IExpression<BigDecimal> expression = matchS();
             if(!hasFileEnd()){
-                matchNewLine();
+                matchExprEnd();
             }
             return expression;
         } catch (BadExpressionFormatException e){
             last = BigDecimal.ZERO;
-            reader.skipRestOfLine();
+            reader.skipRestToDelimiter();
             throw e;
         }
     }
@@ -128,13 +135,13 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
     private IExpression<BigDecimal> matchS() throws IOException {
         if (hasFileEnd()) {
             return null;
-        } else if(hasLineEnd()) {
-            matchNewLine();
+        } else if(hasExprEnd()) {
+            matchExprEnd();
             return matchS();
         } else if(hasToken(TokenReader.TokenType.precisionKey)){
             matchTerm(TokenReader.TokenType.precisionKey);
             TokenReader.Token number = matchTerm(TokenReader.TokenType.number);
-            matchNewLine();
+            matchExprEnd();
             try{
                 precision = Integer.parseInt(number.value);
             } catch (NumberFormatException e){
@@ -146,7 +153,7 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
             matchTerm(TokenReader.TokenType.def);
             FunctionDefinition<BigDecimal> functionDefinition = matchFN();
             contextWrapper.registerFunction(functionDefinition);
-            matchNewLine();
+            matchExprEnd();
             return matchS();
         } else if (hasToken(TokenReader.TokenType.identifier) && extendedExpression) {
             return matchA(matchTerm(TokenReader.TokenType.identifier));
@@ -157,8 +164,7 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
 
     private IExpression<BigDecimal> matchA(TokenReader.Token identifier) {
         ATwoOperandExpression<BigDecimal> leftNew;
-        if (hasToken(TokenReader.TokenType.equals)) {
-            matchTerm(TokenReader.TokenType.equals);
+        if (hasMatchToken(TokenReader.TokenType.equals)) {
             return new VariableAssignment<BigDecimal>(identifier.value, matchE());
         } else {
             IExpression<BigDecimal> left;
@@ -167,42 +173,56 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
             } else {
                 left = new VariableExpression<BigDecimal>(identifier.value);
             }
-            if (hasToken(TokenReader.TokenType.plus)) {
-                matchTerm(TokenReader.TokenType.plus);
+            if (hasMatchToken(TokenReader.TokenType.plus)) {
                 leftNew = new AddExpressionFloat();
                 leftNew.setOperand(0, left);
                 leftNew.setOperand(1, matchT());
                 return matchEa(leftNew);
 
-            } else if (hasToken(TokenReader.TokenType.minus)) {
-                matchTerm(TokenReader.TokenType.minus);
+            } else if (hasMatchToken(TokenReader.TokenType.minus)) {
                 leftNew = new SubExpressionFloat();
                 leftNew.setOperand(0, left);
                 leftNew.setOperand(1, matchT());
                 return matchEa(leftNew);
 
-            } else if (hasToken(TokenReader.TokenType.asterisk)) {
-                matchTerm(TokenReader.TokenType.asterisk);
+            } else if (hasMatchToken(TokenReader.TokenType.asterisk)) {
                 leftNew = new MulExpressionFloat();
                 leftNew.setOperand(0, left);
                 leftNew.setOperand(1, matchF());
                 return matchTa(leftNew);
 
-            } else if (hasToken(TokenReader.TokenType.slash)) {
-                matchTerm(TokenReader.TokenType.slash);
+            } else if (hasMatchToken(TokenReader.TokenType.slash)) {
                 leftNew = new DivExpressionFloat();
                 leftNew.setOperand(0, left);
                 leftNew.setOperand(1, matchF());
                 return matchTa(leftNew);
 
-            } else if(hasLineEnd()){
+            } else if(hasExprEnd()){
                 return left;
             }
         }
         throw new BadExpressionFormatException();
     }
 
-    private IExpression<BigDecimal> matchE() {
+    private IExpression<BigDecimal> matchE(){
+        if(hasMatchToken(TokenReader.TokenType.lBrace)){
+            CompoundExpression<BigDecimal> compoundExpression = new CompoundExpression<BigDecimal>();
+            compoundExpression.add(matchE());
+            while (true) {
+                if (hasMatchExprEnd()) {
+                    compoundExpression.add(matchE());
+                } else if (hasMatchToken(TokenReader.TokenType.rBrace)) {
+                    return compoundExpression;
+                } else {
+                    throw new BadExpressionFormatException();
+                }
+            }
+        } else {
+            return matchEs();
+        }
+    }
+
+    private IExpression<BigDecimal> matchEs() {
         IExpression<BigDecimal> left = matchT();
         return matchEa(left);
     }
@@ -278,7 +298,7 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
         matchTerm(TokenReader.TokenType.lBracket);
         ArrayList<IExpression<BigDecimal>> expressions = new ArrayList<IExpression<BigDecimal>>();
         if(!hasToken(TokenReader.TokenType.rBracket)) {
-            expressions.add(matchArg());
+            expressions.add(matchE());
             matchExprListC(expressions);
         }
         matchTerm(TokenReader.TokenType.rBracket);
@@ -359,16 +379,36 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
         return reader.matchToken(type);
     }
 
-    private void matchNewLine() throws IOException {
-        reader.skipNewLine();
+    private void matchExprEnd() {
+        try {
+            reader.skipDelimiter();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private boolean hasLineEnd() {
-        return reader.hasNewLine();
+    private boolean hasExprEnd() {
+        return reader.hasDelimiter();
+    }
+
+    private boolean hasMatchExprEnd(){
+        if(hasExprEnd()){
+            matchExprEnd();
+            return true;
+        }
+        return false;
     }
 
     private boolean hasToken(TokenReader.TokenType tokenType) {
         return reader.hasToken(tokenType);
+    }
+
+    private boolean hasMatchToken(TokenReader.TokenType tokenType) {
+        if(hasToken(tokenType)){
+            matchTerm(tokenType);
+            return true;
+        }
+        return false;
     }
 
     private boolean hasFileEnd(){

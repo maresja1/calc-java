@@ -13,6 +13,6 @@ public class VariableExpression<T> implements IExpression<T> {
 
     @Override
     public T solve(IExpressionContext<T> context) {
-        return context.getVariableValue(name).solve(context);
+        return context.postProcess(context.getVariableValue(name).solve(context));
     }
 }

@@ -7,4 +7,6 @@ public interface IExpressionContext<T> {
     public IExpression<T> getVariableValue(String varName);
 
     public void setVariableValue(String varName, IExpression<T> expression);
+
+    public T postProcess(T result);
 }

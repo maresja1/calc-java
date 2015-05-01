@@ -44,6 +44,11 @@ public class ExpressionContextWrapper<T> implements IExpressionContext<T> {
         }
     }
 
+    @Override
+    public T postProcess(T result) {
+        return parent.postProcess(result);
+    }
+
     public boolean hasVariable(String varName){
         return variablesValues.containsKey(varName);
     }

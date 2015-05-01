@@ -15,7 +15,8 @@ import java.util.regex.Pattern;
 
 public class TokenReader{
     private HashMap<TokenType, Pattern> tokenHashMap;
-    private Pattern delimiterPattern;
+    private Pattern whiteCharPattern;
+    private char delimiter = ';';
     private BufferedReader in;
     private String[] buffer;
     private int posInBuffer = 0;
@@ -42,10 +43,12 @@ public class TokenReader{
         tokenHashMap.put(TokenType.rBracket, Pattern.compile(")",Pattern.LITERAL));
         tokenHashMap.put(TokenType.argSeparator, Pattern.compile(",",Pattern.LITERAL));
         tokenHashMap.put(TokenType.precisionKey, Pattern.compile("precision",Pattern.LITERAL));
+        tokenHashMap.put(TokenType.lBrace, Pattern.compile("{",Pattern.LITERAL));
+        tokenHashMap.put(TokenType.rBrace, Pattern.compile("}",Pattern.LITERAL));
         funcArgsHashMap.put(TokenType.number, Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?"));
         funcArgsHashMap.put(TokenType.identifier, Pattern.compile("[a-zA-Z]+"));
         Pattern newLinePattern = Pattern.compile("(\\r)?\\n");
-        delimiterPattern = Pattern.compile("\\s+");
+        whiteCharPattern = Pattern.compile("\\s+");
         tokenHashMap.putAll(funcArgsHashMap);
         try {
             fillBuffer();
@@ -69,7 +72,9 @@ public class TokenReader{
         identifier,
         number,
         argSeparator,
-        precisionKey
+        precisionKey,
+        lBrace,
+        rBrace
     }
 
     public static class Token {
@@ -77,12 +82,26 @@ public class TokenReader{
         public String value;
     }
 
+    private String readBuffer(BufferedReader reader, char stopChar) throws IOException {
+        StringBuilder builder = new StringBuilder();
+        char c;
+        do{
+            int next = reader.read();
+            if(next == -1){
+                return builder.length() > 0 ? builder.toString() : null;
+            }
+            c = (char) next;
+            builder.append(c);
+        } while (c != stopChar);
+        return builder.toString();
+    }
+
     private void fillBuffer() throws IOException {
-        String line = in.readLine();
+        String line = readBuffer(in,delimiter);
         if(line == null){
             EOF = true;
         } else {
-            buffer = delimiterPattern.split(line);
+            buffer = whiteCharPattern.split(line);
             posInBuffer = 0;
             posInWord = 0;
         }
@@ -117,7 +136,7 @@ public class TokenReader{
     private Matcher matchNext(Pattern tokenPattern){
         String actualWord = getActualWord();
         if(actualWord == null){
-            throw new BadExpressionFormatException("Unexpected token");
+            throw new BadExpressionFormatException("Unexpected end of line.");
         }
         Matcher matcher = tokenPattern.matcher(actualWord);
         matcher.region(posInWord,matcher.regionEnd());
@@ -128,15 +147,15 @@ public class TokenReader{
         }
     }
 
-    public boolean hasNewLine(){
+    public boolean hasDelimiter(){
         getActualWord();
         return posInBuffer == buffer.length;
     }
 
-    public void skipRestOfLine() throws IOException {
+    public void skipRestToDelimiter() throws IOException {
         fillBuffer();
     }
-    public void skipNewLine() throws IOException {
+    public void skipDelimiter() throws IOException {
         getActualWord();
         if(posInBuffer == buffer.length){
             fillBuffer();

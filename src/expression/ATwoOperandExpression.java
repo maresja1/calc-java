@@ -19,7 +19,7 @@ public abstract class ATwoOperandExpression<T> implements IOperandExpression<T> 
     @Override
     public T solve(IExpressionContext<T> context) {
 
-        return doOperation(operands[0].solve(context), operands[1].solve(context));
+        return context.postProcess(doOperation(operands[0].solve(context), operands[1].solve(context)));
     }
 
     @Override
