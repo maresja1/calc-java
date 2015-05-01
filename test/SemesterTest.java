@@ -23,7 +23,7 @@ public class SemesterTest {
         {
             Assert.assertEquals(new BigDecimal(values[i]).setScale(floatSolver.getPrecision(),BigDecimal.ROUND_HALF_UP), floatSolver.solveExpression(floatSolver.readExpression()));
         }
-        Assert.assertEquals(null, floatSolver.solveExpression(floatSolver.readExpression()));
+        Assert.assertEquals(null, floatSolver.readExpression());
     }
 
     @Test
@@ -63,9 +63,8 @@ public class SemesterTest {
                              "a = addToA(last); addToA(1);", 10.0, 10.0, 20.0, 21.0);
     }
 
-    /*
     @Test
     public void testFor () throws IOException {
-        testValidExpressions();
-    }*/
+        testValidExpressions("DEF factorial(n) for(f, 1, a){};");
+    }
 }
