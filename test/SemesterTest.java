@@ -1,5 +1,6 @@
 import exception.BadExpressionFormatException;
 import executing.FloatSolver;
+import expression.IExpression;
 import org.junit.Assert;
 import org.junit.Test;
 import parsing.TokenReader;
@@ -21,7 +22,9 @@ public class SemesterTest {
         FloatSolver floatSolver = new FloatSolver(reader);
         for (int i = 0; i < values.length; ++i)
         {
-            assertResult(values[i],floatSolver.solveExpression(floatSolver.readExpression()),floatSolver.getPrecision());
+            IExpression<BigDecimal> expression = floatSolver.readExpression();
+            Assert.assertNotNull(expression);
+            assertResult(values[i],floatSolver.solveExpression(expression),floatSolver.getPrecision());
         }
         Assert.assertEquals(null, floatSolver.readExpression());
     }
@@ -438,6 +441,33 @@ public class SemesterTest {
     }
 
     @Test
+    public void testSemiColon3() throws IOException {
+        testValidExpressions("{7;8}", 8.0);
+    }
+
+    @Test
+    public void testSemiColon4() throws IOException {
+        testValidExpressions("{7;8;}", 8.0);
+    }
+
+    @Test
+    public void testSemiColon5() throws IOException {
+        testValidExpressions("{7;8}{9;10;20;}", 8.0,20.0);
+    }
+
+
+    @Test
+    public void testSemiColon6() throws IOException {
+        testValidExpressions("{7;{9;10;20}}", 20.0);
+    }
+
+    @Test
+    public void testSemiColon7() throws IOException {
+        testValidExpressions("{7;{9;10}20}", 20.0);
+    }
+
+
+    @Test
     public void testCompoundStatement () throws IOException {
         testValidExpressions("DEF sqr(a) { b = a * a;  b; }\n" +
                              "sqr(5);\n" +
@@ -473,7 +503,7 @@ public class SemesterTest {
 
     @Test
     public void testFor () throws IOException {
-        testValidExpressions("DEF factorial(n) {f = 1; for(i, 1, n ){f = f*(i+1)}; f; }" +
+        testValidExpressions("DEF factorial(n) {f = 1; for(i, 1, n ){f = f*(i+1)} f; }" +
                              "factorial(0); factorial(1); factorial(2); factorial(3); factorial(10);",
                              factorial(0), factorial(1), 2.0, 6.0, factorial(10));
     }

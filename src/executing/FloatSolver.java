@@ -90,12 +90,30 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
             if(operand2.compareTo(BigDecimal.ZERO) == 0){
                 throw new BadExpressionFormatException("Division by zero");
             }
-            return operand1.divide(operand2,BigDecimal.ROUND_HALF_UP);
+            return operand1.divide(operand2, BigDecimal.ROUND_HALF_UP);
         }
 
         @Override
         public String getName() {
             return "/";
+        }
+    }
+
+    private static class ExpressionEndWrap{
+        private IExpression<BigDecimal> expression;
+        private boolean isEndMatched;
+
+        public ExpressionEndWrap(IExpression<BigDecimal> expression, boolean isEndMatched) {
+            this.expression = expression;
+            this.isEndMatched = isEndMatched;
+        }
+
+        public IExpression<BigDecimal> getExpression() {
+            return expression;
+        }
+
+        public boolean isEndMatched() {
+            return isEndMatched;
         }
     }
 
@@ -141,12 +159,16 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
     }
 
     private IExpression<BigDecimal> matchS() throws IOException {
-        if (hasFileEnd()) {
-            return null;
-        } else if(hasExprEnd()) {
-            matchExprEnd();
-            return matchS();
-        } else if(hasToken(TokenReader.TokenType.precisionKey)){
+        while (true) {
+            if (hasFileEnd()) {
+                return null;
+            } else if (hasExprEnd()) {
+                matchExprEnd();
+            } else {
+                break;
+            }
+        }
+        if(hasToken(TokenReader.TokenType.precisionKey)){
             matchTerm(TokenReader.TokenType.precisionKey);
             TokenReader.Token number = matchTerm(TokenReader.TokenType.number);
             matchExprEnd();
@@ -162,16 +184,14 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
             contextWrapper.registerFunction(functionDefinition);
             return matchS();
         } else {
-            IExpression<BigDecimal> a = matchA();
-            if(a instanceof CompoundExpression){
-                exprEndMatched = true;
-            }
-            return a;
+            ExpressionEndWrap a = matchA();
+            exprEndMatched = a.isEndMatched();
+            return a.getExpression();
         }
     }
 
-    private IExpression<BigDecimal> matchAfork() {
-        if(hasMatchToken(TokenReader.TokenType.forKey)){
+    private ExpressionEndWrap matchAfork() {
+        if(hasMatchToken(TokenReader.TokenType.forKey)) {
             matchTerm(TokenReader.TokenType.lBracket);
             String iteratorName = matchTerm(TokenReader.TokenType.identifier).value;
             matchTerm(TokenReader.TokenType.argSeparator);
@@ -179,12 +199,16 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
             matchTerm(TokenReader.TokenType.argSeparator);
             IExpression<BigDecimal> maxExpression = matchE();
             matchTerm(TokenReader.TokenType.rBracket);
-            IExpression<BigDecimal> body = matchA();
-            return new ForExpression(iteratorName,initExpression,maxExpression,body);
+            ExpressionEndWrap a = matchA();
+            IExpression<BigDecimal> body = a.getExpression();
+            if(!a.isEndMatched()){
+                matchExprEnd();
+            }
+            return new ExpressionEndWrap(new ForExpression(iteratorName,initExpression,maxExpression,body),true);
         } else if (hasToken(TokenReader.TokenType.identifier) && extendedExpression) {
-            return matchAs(matchTerm(TokenReader.TokenType.identifier));
+            return new ExpressionEndWrap(matchAs(matchTerm(TokenReader.TokenType.identifier)),hasMatchExprEnd());
         } else {
-            return matchE();
+            return new ExpressionEndWrap(matchE(),hasMatchExprEnd());
         }
     }
 
@@ -231,24 +255,24 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
         throw new BadExpressionFormatException(reader.printBuffer());
     }
 
-    private IExpression<BigDecimal> matchA(){
+    private ExpressionEndWrap matchA(){
         if(hasMatchToken(TokenReader.TokenType.lBrace)){
             CompoundExpression<BigDecimal> compoundExpression = new CompoundExpression<BigDecimal>();
-            compoundExpression.add(matchA());
-            boolean next = hasMatchExprEnd();
+            ExpressionEndWrap a = matchA();
+            compoundExpression.add(a.getExpression());
             while (true) {
                 if (hasMatchToken(TokenReader.TokenType.rBrace)) {
-                    return compoundExpression;
-                } else if (next) {
-                    compoundExpression.add(matchA());
-                    next = hasMatchExprEnd();
+                    hasMatchExprEnd();
+                    return new ExpressionEndWrap(compoundExpression,true);
+                } else if (a.isEndMatched()) {
+                    a = matchA();
+                    compoundExpression.add(a.getExpression());
                 } else {
                     throw new BadExpressionFormatException(reader.printBuffer());
                 }
             }
         } else {
-            IExpression<BigDecimal> result =  matchAfork();
-            return result;
+            return matchAfork();
         }
     }
 
@@ -321,7 +345,7 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
             token = matchTerm(TokenReader.TokenType.number);
             return new ConstantExpression<BigDecimal>(new BigDecimal(token.value).setScale(precision,BigDecimal.ROUND_HALF_UP));
         }
-        throw new BadExpressionFormatException("Unexpected token type." + reader.printBuffer());
+        throw new BadExpressionFormatException("Unexpected token type - " + reader.printBuffer());
     }
 
     private IExpression<BigDecimal> matchFuncCallRest(TokenReader.Token token) {
@@ -361,7 +385,12 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
                 funcArgs.add(token.value);
             }
             matchTerm(TokenReader.TokenType.rBracket);
-            return new FunctionDefinition<BigDecimal>(tokenIdentifier.value, arguments, matchA());
+            ExpressionEndWrap a = matchA();
+            FunctionDefinition<BigDecimal> functionDefinition = new FunctionDefinition<BigDecimal>(tokenIdentifier.value, arguments, a.getExpression());
+            if(!a.isEndMatched()){
+                matchExprEnd();
+            }
+            return functionDefinition;
         } finally {
             inFuncDef = false;
             funcArgs.clear();

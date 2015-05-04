@@ -94,6 +94,7 @@ public class TokenReader{
         do{
             int next = reader.read();
             if(next == -1){
+                EOF = true;
                 return builder.length() > 0 ? builder.toString() : null;
             }
             c = (char) next;
@@ -106,7 +107,8 @@ public class TokenReader{
         do {
             String line = readBuffer(in, delimiter);
             if (line == null) {
-                EOF = true;
+                buffer = new String[0];
+                posInBuffer = 0;
                 return;
             } else {
                 buffer = whiteCharPattern.split(line);
@@ -148,7 +150,7 @@ public class TokenReader{
             throw new BadExpressionFormatException("Unexpected end of line.");
         }
         Matcher matcher = tokenPattern.matcher(actualWord);
-        matcher.region(posInWord,matcher.regionEnd());
+        matcher.region(posInWord, matcher.regionEnd());
         if(matcher.lookingAt()){
             return matcher;
         } else {
@@ -173,7 +175,21 @@ public class TokenReader{
     }
 
     public String printBuffer(){
-        return buffer[posInBuffer].substring(0,posInWord) + "@" + buffer[posInBuffer].substring(posInWord);
+        if(posInBuffer >= buffer.length){
+            return "buffer over edge, last - " + buffer[buffer.length-1];
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < buffer.length; i++) {
+            if(posInBuffer == i){
+                builder.append(buffer[posInBuffer].substring(0,posInWord));
+                builder.append("@");
+                builder.append(buffer[posInBuffer].substring(posInWord));
+            } else {
+                builder.append(buffer[i]);
+            } builder.append(' ');
+        }
+        builder.setLength(builder.length()-1);
+        return builder.toString();
     }
 
     public Token matchToken(TokenType tokenType){
@@ -189,6 +205,6 @@ public class TokenReader{
     }
 
     public boolean hasFileEnd(){
-        return EOF;
+        return EOF && posInBuffer >= buffer.length;
     }
 }
