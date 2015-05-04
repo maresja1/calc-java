@@ -37,10 +37,18 @@ public class ExpressionContextWrapper<T> implements IExpressionContext<T> {
     @Override
     public void setVariableValue(String varName, IExpression<T> expression) {
         if(!varName.equals("last")){
-            if(functionsDefinition.containsKey(varName)){
-                throw new BadExpressionFormatException("Function with same name already exists.");
+            if(!hasVariable(varName)) {
+                if (functionsDefinition.containsKey(varName)) {
+                    throw new BadExpressionFormatException("Function with same name already exists.");
+                }
+                variablesValues.put(varName, expression);
+            } else {
+                if(!variablesValues.containsKey(varName)){
+                    parent.setVariableValue(varName,expression);
+                } else {
+                    variablesValues.put(varName,expression);
+                }
             }
-            variablesValues.put(varName, expression);
         }
     }
 
@@ -49,8 +57,9 @@ public class ExpressionContextWrapper<T> implements IExpressionContext<T> {
         return parent.postProcess(result);
     }
 
+    @Override
     public boolean hasVariable(String varName){
-        return variablesValues.containsKey(varName);
+        return variablesValues.containsKey(varName) || parent.hasVariable(varName);
     }
 
     public void registerFunction(FunctionDefinition<T> functionDefinition){

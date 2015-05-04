@@ -473,7 +473,7 @@ public class SemesterTest {
 
     @Test
     public void testFor () throws IOException {
-        testValidExpressions("DEF factorial(n) {f = 1; for(i, 2, n - 1){f = f*i}; f}" +
+        testValidExpressions("DEF factorial(n) {f = 1; for(i, 1, n ){f = f*(i+1)}; f; }" +
                              "factorial(0); factorial(1); factorial(2); factorial(3); factorial(10);",
                              factorial(0), factorial(1), 2.0, 6.0, factorial(10));
     }
@@ -481,7 +481,7 @@ public class SemesterTest {
     @Test
     public void nestedFunctionCalls () throws IOException {
         testValidExpressions("DEF times(x, y) {x*y}" +
-                             "DEF pow(x, n) {p = 1; for(i,1,n}{p = x*p}; p};" +
+                             "DEF pow(x, n) {p = 1; for(i,0,n){p = x*p}; p;};" +
                              "DEF sqr(a) pow(a, 2);" +
                              "times(2, 5); pow(1, 0); sqr(3); pow(2,10);",
                               10.0, 1.0, 9.0, 1024.0);

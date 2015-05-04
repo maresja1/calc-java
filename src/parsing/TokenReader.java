@@ -45,6 +45,9 @@ public class TokenReader{
         tokenHashMap.put(TokenType.precisionKey, Pattern.compile("precision",Pattern.LITERAL));
         tokenHashMap.put(TokenType.lBrace, Pattern.compile("{",Pattern.LITERAL));
         tokenHashMap.put(TokenType.rBrace, Pattern.compile("}",Pattern.LITERAL));
+        tokenHashMap.put(TokenType.forKey, Pattern.compile("for", Pattern.LITERAL));
+        tokenHashMap.put(TokenType.ifKey, Pattern.compile("if",Pattern.LITERAL));
+        tokenHashMap.put(TokenType.elseKey, Pattern.compile("else",Pattern.LITERAL));
         funcArgsHashMap.put(TokenType.number, Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?"));
         funcArgsHashMap.put(TokenType.identifier, Pattern.compile("[a-zA-Z]+"));
         Pattern newLinePattern = Pattern.compile("(\\r)?\\n");
@@ -149,7 +152,7 @@ public class TokenReader{
         if(matcher.lookingAt()){
             return matcher;
         } else {
-            throw new BadExpressionFormatException("Unexpected token near " + actualWord.substring(posInWord));
+            throw new BadExpressionFormatException("Unexpected token near " + printBuffer());
         }
     }
 
@@ -170,7 +173,7 @@ public class TokenReader{
     }
 
     public String printBuffer(){
-        return buffer[posInBuffer] + String.format(" - position (%d)",posInWord);
+        return buffer[posInBuffer].substring(0,posInWord) + "@" + buffer[posInBuffer].substring(posInWord);
     }
 
     public Token matchToken(TokenType tokenType){
