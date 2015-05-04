@@ -378,17 +378,6 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
         }
     }
 
-    private IExpression<BigDecimal> matchArg(){
-        if (hasToken(TokenReader.TokenType.identifier) && extendedExpression ) {
-            TokenReader.Token token = matchTerm(TokenReader.TokenType.identifier);
-            return new VariableExpression<BigDecimal>(token.value);
-        } else if (hasToken(TokenReader.TokenType.number)) {
-            TokenReader.Token token = matchTerm(TokenReader.TokenType.number);
-            return new ConstantExpression<BigDecimal>(new BigDecimal(token.value).setScale(precision,BigDecimal.ROUND_HALF_UP));
-        }
-        throw new BadExpressionFormatException("Expected valid argument expression.");
-    }
-
 
     private TokenReader.Token matchTerm(TokenReader.TokenType type) {
         return reader.matchToken(type);

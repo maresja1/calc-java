@@ -74,7 +74,10 @@ public class TokenReader{
         argSeparator,
         precisionKey,
         lBrace,
-        rBrace
+        rBrace,
+        forKey,
+        ifKey,
+        elseKey
     }
 
     public static class Token {
