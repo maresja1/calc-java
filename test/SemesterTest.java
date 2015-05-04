@@ -63,8 +63,34 @@ public class SemesterTest {
                              "a = addToA(last); addToA(1);", 10.0, 10.0, 20.0, 21.0);
     }
 
+    private double factorial(int i)
+    {
+        double factVal = 1.0;
+        for (int j = 2; j <= i; ++j)
+        {
+            factVal *= j;
+        }
+        return factVal;
+    }
+
     @Test
     public void testFor () throws IOException {
-        testValidExpressions("DEF factorial(n) for(f, 1, a){};");
+        testValidExpressions("DEF factorial(n) {f = 1; for(i, 2, n - 1){f = f*i}; f}" +
+                             "factorial(0); factorial(1); factorial(2); factorial(3); factorial(10);",
+                             factorial(0), factorial(1), 2.0, 6.0, factorial(10));
+    }
+
+    @Test
+    public void nestedFunctionCalls () throws IOException {
+        testValidExpressions("DEF times(x, y) {x*y}" +
+                             "DEF pow(x, n) {p = 1; for(i,1,n}{p = x*p}; p};" +
+                             "DEF sqr(a) pow(a, 2);" +
+                             "times(2, 5); pow(1, 0); sqr(3); pow(2,10);",
+                              10.0, 1.0, 9.0, 1024.0);
+    }
+
+    @Test
+    public void recursionTest () throws IOException {
+
     }
 }
