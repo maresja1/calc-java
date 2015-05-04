@@ -162,8 +162,12 @@ public class TokenReader{
         if(hasDelimiter()){
             fillBuffer();
         } else {
-            throw new BadExpressionFormatException("Expected line end");
+            throw new BadExpressionFormatException("Expected end of statement " + printBuffer());
         }
+    }
+
+    public String printBuffer(){
+        return buffer[posInBuffer] + String.format(" - position (%d)",posInWord);
     }
 
     public Token matchToken(TokenType tokenType){
