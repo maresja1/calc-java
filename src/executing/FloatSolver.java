@@ -199,12 +199,27 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
             matchTerm(TokenReader.TokenType.argSeparator);
             IExpression<BigDecimal> maxExpression = matchE();
             matchTerm(TokenReader.TokenType.rBracket);
-            ExpressionEndWrap a = matchA();
-            IExpression<BigDecimal> body = a.getExpression();
-            if(!a.isEndMatched()){
+            ExpressionEndWrap body = matchA();
+            if(!body.isEndMatched()){
                 matchExprEnd();
             }
-            return new ExpressionEndWrap(new ForExpression(iteratorName,initExpression,maxExpression,body),true);
+            return new ExpressionEndWrap(new ForExpression(iteratorName,initExpression,maxExpression,body.getExpression()),true);
+        } else if(hasMatchToken(TokenReader.TokenType.ifKey)){
+            matchTerm(TokenReader.TokenType.lBracket);
+            IExpression<BigDecimal> condExpression = matchE();
+            matchTerm(TokenReader.TokenType.rBracket);
+            ExpressionEndWrap ifExpressionEndWrap = matchA();
+            if(!ifExpressionEndWrap.isEndMatched()){
+                matchExprEnd();
+            }
+            ExpressionEndWrap elseExpressionEndWrap = null;
+            if(hasMatchToken(TokenReader.TokenType.elseKey)){
+                elseExpressionEndWrap = matchA();
+                if(!elseExpressionEndWrap.isEndMatched()){
+                    matchExprEnd();
+                }
+            }
+            return new ExpressionEndWrap(new IfExpression(condExpression,ifExpressionEndWrap.getExpression(),elseExpressionEndWrap != null ? elseExpressionEndWrap.getExpression() : null),true);
         } else if (hasToken(TokenReader.TokenType.identifier) && extendedExpression) {
             return new ExpressionEndWrap(matchAs(matchTerm(TokenReader.TokenType.identifier)),hasMatchExprEnd());
         } else {
