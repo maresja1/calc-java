@@ -38,13 +38,23 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
     }
 
     @Override
-    public void setVariableValue(String varName, IExpression<BigDecimal> expression) {
+    public void setVariableValue(String varName, IExpression<BigDecimal> expression, boolean override) {
         throw new BadExpressionFormatException();
     }
 
     @Override
     public BigDecimal postProcess(BigDecimal result) {
         return result.setScale(precision,BigDecimal.ROUND_HALF_UP);
+    }
+
+    @Override
+    public void registerFunction(FunctionDefinition<BigDecimal> functionDefinition) {
+        throw new BadExpressionFormatException("Can't register function to global context.");
+    }
+
+    @Override
+    public FunctionDefinition<BigDecimal> getFunction(String value) {
+        throw new BadExpressionFormatException(String.format("Function \"%s\"does not exist.",value));
     }
 
 
@@ -122,7 +132,9 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
 //        A -> = E | + TEa | - TEa | * TF | / TF
 //        E -> Es | { EsList }
 //        EsList -> Es, EsList
-//        Es -> TEa
+//        Es -> HEb
+//        Eb -> ==(<,>,<=,>=) HEb | /\
+//        H -> TEa
 //        Ea -> + TEa | /\
 //        T -> FTa
 //        Ta -> * TF | / TF | /\
@@ -181,7 +193,6 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
         } else if (extendedExpression && hasMatchToken(TokenReader.TokenType.def)) {
             last = BigDecimal.ZERO;
             FunctionDefinition<BigDecimal> functionDefinition = matchFN();
-            contextWrapper.registerFunction(functionDefinition);
             return matchS();
         } else {
             ExpressionEndWrap a = matchA();
@@ -292,6 +303,19 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
     }
 
     private IExpression<BigDecimal> matchE() {
+        IExpression<BigDecimal> left = matchH();
+        return matchEb(left);
+    }
+
+    private IExpression<BigDecimal> matchEb(IExpression<BigDecimal> left) {
+        if(hasToken(TokenReader.TokenType.relOper)){
+            TokenReader.Token token = matchTerm(TokenReader.TokenType.relOper);
+            return ARelationalExpression.createOperator(token.value,left,matchH());
+        }
+        return left;
+    }
+
+    private IExpression<BigDecimal> matchH() {
         IExpression<BigDecimal> left = matchT();
         return matchEa(left);
     }
@@ -348,7 +372,7 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
             return res;
         } else if (hasToken(TokenReader.TokenType.identifier) && extendedExpression ) {
             token = matchTerm(TokenReader.TokenType.identifier);
-            if(hasToken(TokenReader.TokenType.lBracket) && !inFuncDef){
+            if(hasToken(TokenReader.TokenType.lBracket)){
                 return matchFuncCallRest(token);
             } else {
 //                if(inFuncDef && !funcArgs.contains(token.value)){
@@ -400,11 +424,13 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
                 funcArgs.add(token.value);
             }
             matchTerm(TokenReader.TokenType.rBracket);
+            FunctionDefinition<BigDecimal> functionDefinition = new FunctionDefinition<BigDecimal>(tokenIdentifier.value, arguments);
+            contextWrapper.registerFunction(functionDefinition);
             ExpressionEndWrap a = matchA();
-            FunctionDefinition<BigDecimal> functionDefinition = new FunctionDefinition<BigDecimal>(tokenIdentifier.value, arguments, a.getExpression());
             if(!a.isEndMatched()){
                 matchExprEnd();
             }
+            functionDefinition.setFunctionExpression(a.getExpression());
             return functionDefinition;
         } finally {
             inFuncDef = false;

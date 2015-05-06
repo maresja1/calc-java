@@ -35,7 +35,7 @@ public class ExpressionContextWrapper<T> implements IExpressionContext<T> {
     }
 
     @Override
-    public void setVariableValue(String varName, IExpression<T> expression) {
+    public void setVariableValue(String varName, IExpression<T> expression, boolean override) {
         if(!varName.equals("last")){
             if(!hasVariable(varName)) {
                 if (functionsDefinition.containsKey(varName)) {
@@ -43,8 +43,8 @@ public class ExpressionContextWrapper<T> implements IExpressionContext<T> {
                 }
                 variablesValues.put(varName, expression);
             } else {
-                if(!variablesValues.containsKey(varName)){
-                    parent.setVariableValue(varName,expression);
+                if(!override && !variablesValues.containsKey(varName)){
+                    parent.setVariableValue(varName,expression, false);
                 } else {
                     variablesValues.put(varName,expression);
                 }
@@ -62,6 +62,7 @@ public class ExpressionContextWrapper<T> implements IExpressionContext<T> {
         return variablesValues.containsKey(varName) || parent.hasVariable(varName);
     }
 
+    @Override
     public void registerFunction(FunctionDefinition<T> functionDefinition){
         if(hasVariable(functionDefinition.getFuncName()) || functionDefinition.getFuncName().equals("last")){
             throw new BadExpressionFormatException("Variable with same name already exists.");
@@ -70,9 +71,10 @@ public class ExpressionContextWrapper<T> implements IExpressionContext<T> {
         }
     }
 
+    @Override
     public FunctionDefinition<T> getFunction(String value) {
         if(!functionsDefinition.containsKey(value)){
-            throw new BadExpressionFormatException("Function by this name does not exist.");
+            return parent.getFunction(value);
         }
         return functionsDefinition.get(value);
     }

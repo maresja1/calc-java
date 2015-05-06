@@ -19,7 +19,7 @@ public class IfExpression implements IExpression<BigDecimal> {
     @Override
     public BigDecimal solve(IExpressionContext<BigDecimal> context) {
         BigDecimal decimal = condExpression.solve(context);
-        if(decimal.compareTo(BigDecimal.ONE) != 0){
+        if(decimal.compareTo(BigDecimal.ZERO) != 0){
             return ifBody.solve(context);
         } else if(elseBody != null) {
             return elseBody.solve(context);

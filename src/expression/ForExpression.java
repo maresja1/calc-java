@@ -28,13 +28,13 @@ public class ForExpression implements IExpression<BigDecimal> {
 
     private void incrementIterator(IExpressionContext<BigDecimal> context){
         BigDecimal iterator = context.getVariableValue(iteratorName).solve(context);
-        context.setVariableValue(iteratorName, new ConstantExpression<BigDecimal>(iterator.add(new BigDecimal(1))));
+        context.setVariableValue(iteratorName, new ConstantExpression<BigDecimal>(iterator.add(new BigDecimal(1))), false);
     }
 
     @Override
     public BigDecimal solve(IExpressionContext<BigDecimal> context) {
         ExpressionContextWrapper<BigDecimal> expressionContextWrapper = new ExpressionContextWrapper<BigDecimal>(context);
-        expressionContextWrapper.setVariableValue(iteratorName,new ConstantExpression<BigDecimal>(initialValue.solve(context)));
+        expressionContextWrapper.setVariableValue(iteratorName,new ConstantExpression<BigDecimal>(initialValue.solve(context)), false);
         BigDecimal result = new BigDecimal(0);
         while(isIteratorSmaller(expressionContextWrapper)){
             bodyExpression.solve(expressionContextWrapper);

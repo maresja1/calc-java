@@ -5,15 +5,21 @@ package expression;
  */
 
 /**
- * Expression of generic type with two operands.
+ * Expression of generic type with two operators.
  *
  * @param <T> type of expression
  */
 public abstract class ATwoOperandExpression<T> implements IOperandExpression<T> {
     protected IExpression<T>[] operands;
 
-    protected ATwoOperandExpression() {
+    public ATwoOperandExpression() {
         operands = (IExpression<T>[]) new IExpression[2];
+    }
+
+    public ATwoOperandExpression(IExpression<T> operand1, IExpression<T> operand2) {
+        operands = (IExpression<T>[]) new IExpression[2];
+        operands[0] = operand1;
+        operands[1] = operand2;
     }
 
     @Override

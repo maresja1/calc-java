@@ -518,10 +518,35 @@ public class SemesterTest {
     }
 
     @Test
+    public void ifStatementTest1() throws IOException {
+        testValidExpressions("DEF nonzero(a){if (a){a;}else{1;};};nonzero(0);nonzero(1);nonzero(2);",1.0,1.0,2.0);
+    }
+
+    @Test
     public void ifStatementTest() throws IOException {
         testValidExpressions("DEF max(a, b){if (a > b){a;}else{b;};};max(3, 2);" +
                              "DEF sign(a){if(a < 0){-1;}else{if(a == 0){0;}else{1;};};};sign(-10);sign(0);sign(1/999);",
                              3.0, -1.0, 0.0, 1.0);
+    }
+
+    private static double fibonacci(int n){
+        if(n <= 1){
+            return 1;
+        } else {
+            return fibonacci(n-1) + fibonacci(n-2);
+        }
+    }
+
+    @Test
+    public void fibonacciTest () throws IOException {
+        testValidExpressions(
+                "DEF fibonacci(n){if(n<=1){1;}else{fibonacci(n-1)+fibonacci(n-2)}}" +
+                "fibonacci(0);fibonacci(1);fibonacci(2);fibonacci(4);fibonacci(20);",
+                fibonacci(0),
+                fibonacci(1),
+                fibonacci(2),
+                5.0,
+                fibonacci(20));
     }
 
     @Test

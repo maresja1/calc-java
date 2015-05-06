@@ -15,10 +15,13 @@ public class FunctionDefinition<T> {
     private String funcName;
 
 
-    public FunctionDefinition(String funcName, ArrayList<TokenReader.Token> arguments, IExpression<T> functionExpression) {
+    public FunctionDefinition(String funcName, ArrayList<TokenReader.Token> arguments) {
         this.arguments = arguments;
-        this.functionExpression = functionExpression;
         this.funcName = funcName;
+    }
+
+    public void setFunctionExpression(IExpression<T> functionExpression) {
+        this.functionExpression = functionExpression;
     }
 
     public IExpression<T> getFunctionExpression() {
