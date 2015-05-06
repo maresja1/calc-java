@@ -518,7 +518,17 @@ public class SemesterTest {
     }
 
     @Test
-    public void recursionTest () throws IOException {
+    public void ifStatementTest() throws IOException {
+        testValidExpressions("DEF max(a, b){if (a > b){a;}else{b;};};max(3, 2);" +
+                             "DEF sign(a){if(a < 0){-1;}else{if(a == 0){0;}else{1;};};};sign(-10);sign(0);sign(1/999);",
+                             3.0, -1.0, 0.0, 1.0);
+    }
 
+    @Test
+    public void recursionTest () throws IOException {
+        testValidExpressions("DEF ceilRec(a, n){if (n > a){n;}else{ceilRec(a, n+1);};}; DEF ceil(a){ceilRec(a, 0);}; DEF floor(a){ceil(a) - 1;};" +
+                             "ceil(1/3); floor(20/9);" +
+                             "DEF sqrtRec(a, b){c = a/b; d = (b-c)*(b-c); if(d < 1/10000){c;}else{sqrtRec(a, (c+b)/2);};};" +
+                             "DEF sqrt(a){sqrtRec(a, a/2);};floor(sqrt(3));ceil(sqrt(3));", 1.0, 2.0, 1.0, 2.0);
     }
 }
