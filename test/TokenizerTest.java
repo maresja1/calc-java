@@ -34,7 +34,7 @@
 //    @Test
 //    public void testFunc1() throws IOException {
 //        CodEx.TokenReader reader = createReader("DEF func(a,0.131e9,c,26)");
-//        assertTokenType(reader.readToken(), CodEx.TokenReader.TokenType.def);
+//        assertTokenType(reader.readToken(), CodEx.TokenReader.TokenType.defKey);
 //        Assert.assertFalse(reader.isEndOfLine());
 //        assertTokenType(reader.readToken(), CodEx.TokenReader.TokenType.funCall);
 //        Assert.assertFalse(reader.isEndOfLine());
@@ -44,7 +44,7 @@
 //    @Test
 //    public void testFunc2() throws IOException {
 //        CodEx.TokenReader reader = createReader("DEF func(a,0.131e9,c,26)");
-//        assertTokenType(reader.readToken(), CodEx.TokenReader.TokenType.def);
+//        assertTokenType(reader.readToken(), CodEx.TokenReader.TokenType.defKey);
 //        Assert.assertFalse(reader.isEndOfLine());
 //        assertArgsTokenType(
 //                ((CodEx.TokenReader.FuncCallDescription)reader.readToken().value),

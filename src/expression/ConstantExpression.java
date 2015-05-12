@@ -20,4 +20,8 @@ public class ConstantExpression<T> implements IExpression<T> {
     public T solve(IExpressionContext<T> context) {
         return constant;
     }
+
+    public T getConstant() {
+        return constant;
+    }
 }

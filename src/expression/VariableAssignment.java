@@ -15,7 +15,7 @@ public class VariableAssignment<T> implements IExpression<T> {
     @Override
     public T solve(IExpressionContext<T> context) {
         T value = assignmentExpression.solve(context);
-        context.setVariableValue(name, new ConstantExpression<T>(value), false);
+        context.setVariableValue(name, new ConstantExpression<T>(value));
         return value;
     }
 }

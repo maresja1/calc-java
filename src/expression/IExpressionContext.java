@@ -10,7 +10,9 @@ public interface IExpressionContext<T> {
 
     public IExpression<T> getVariableValue(String varName);
 
-    public void setVariableValue(String varName, IExpression<T> expression, boolean override);
+    public void setVariableValue(String varName, IExpression<T> expression);
+
+    void defineParentVariable(String varName);
 
     public T postProcess(T result);
 

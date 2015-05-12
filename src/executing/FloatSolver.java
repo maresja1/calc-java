@@ -38,12 +38,25 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
     }
 
     @Override
-    public void setVariableValue(String varName, IExpression<BigDecimal> expression, boolean override) {
+    public void setVariableValue(String varName, IExpression<BigDecimal> expression) {
+        if(varName.equals("last") && (expression instanceof ConstantExpression)){
+            ConstantExpression<BigDecimal> constantExpression = (ConstantExpression<BigDecimal>) expression;
+            last = constantExpression.getConstant();
+        } else {
+            throw new BadExpressionFormatException();
+        }
+    }
+
+    @Override
+    public void defineParentVariable(String varName) {
         throw new BadExpressionFormatException();
     }
 
     @Override
     public BigDecimal postProcess(BigDecimal result) {
+        if(result == null){
+            return null;
+        }
         return result.setScale(precision,BigDecimal.ROUND_HALF_UP);
     }
 
@@ -127,7 +140,7 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
         }
     }
 
-//        S -> def id(VarList) Afork ; Afork |
+//        S -> defKey id(VarList) Afork ; Afork |
 //        Afork -> id A; | E;
 //        A -> = E | + TEa | - TEa | * TF | / TF
 //        E -> Es | { EsList }
@@ -190,7 +203,7 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
                 throw new BadExpressionFormatException("Bad precision argument");
             }
             return matchS();
-        } else if (extendedExpression && hasMatchToken(TokenReader.TokenType.def)) {
+        } else if (extendedExpression && hasMatchToken(TokenReader.TokenType.defKey)) {
             last = BigDecimal.ZERO;
             FunctionDefinition<BigDecimal> functionDefinition = matchFN();
             return matchS();
@@ -231,6 +244,8 @@ public class FloatSolver implements IExpressionContext<BigDecimal> {
                 }
             }
             return new ExpressionEndWrap(new IfExpression(condExpression,ifExpressionEndWrap.getExpression(),elseExpressionEndWrap != null ? elseExpressionEndWrap.getExpression() : null),true);
+        } else if(inFuncDef && hasMatchToken(TokenReader.TokenType.parentalKey)){
+            return new ExpressionEndWrap(new ParentalDefinitionExpression<BigDecimal>(matchTerm(TokenReader.TokenType.identifier).value),hasMatchExprEnd());
         } else if (hasToken(TokenReader.TokenType.identifier) && extendedExpression) {
             return new ExpressionEndWrap(matchAs(matchTerm(TokenReader.TokenType.identifier)),hasMatchExprEnd());
         } else {

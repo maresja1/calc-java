@@ -6,6 +6,7 @@ import expression.IExpressionContext;
 import metadata.FunctionDefinition;
 
 import java.util.HashMap;
+import java.util.HashSet;
 
 /**
  * Created by Jan Mares on 31.03.2015
@@ -15,9 +16,11 @@ public class ExpressionContextWrapper<T> implements IExpressionContext<T> {
     private IExpressionContext<T> parent;
     private HashMap<String, IExpression<T>> variablesValues = new HashMap<String, IExpression<T>>();
     private HashMap<String, FunctionDefinition<T>> functionsDefinition = new HashMap<String, FunctionDefinition<T>>();
+    private HashSet<String> parentVariables = new HashSet<String>();
 
     public ExpressionContextWrapper(IExpressionContext<T> parent) {
         this.parent = parent;
+        parentVariables.add("last");
     }
 
     @Override
@@ -26,30 +29,30 @@ public class ExpressionContextWrapper<T> implements IExpressionContext<T> {
             throw new BadExpressionFormatException("Function with same name already exists.");
         }
 
-        if (variablesValues.containsKey(varName)) {
-            return variablesValues.get(varName);
-        } else if(parent != null) {
+        if (parent != null && parentVariables.contains(varName)) {
             return parent.getVariableValue(varName);
+        } else if(variablesValues.containsKey(varName)){
+            return variablesValues.get(varName);
         }
-        throw new BadExpressionFormatException("Unknown variable");
+        throw new BadExpressionFormatException("Unknown variable - " + varName);
     }
 
     @Override
-    public void setVariableValue(String varName, IExpression<T> expression, boolean override) {
-        if(!varName.equals("last")){
-            if(!hasVariable(varName)) {
-                if (functionsDefinition.containsKey(varName)) {
-                    throw new BadExpressionFormatException("Function with same name already exists.");
-                }
-                variablesValues.put(varName, expression);
+    public void setVariableValue(String varName, IExpression<T> expression) {
+        if(parent != null && parentVariables.contains(varName)){
+            parent.setVariableValue(varName,expression);
+        } else {
+            if (functionsDefinition.containsKey(varName)) {
+                throw new BadExpressionFormatException("Function with same name already exists.");
             } else {
-                if(!override && !variablesValues.containsKey(varName)){
-                    parent.setVariableValue(varName,expression, false);
-                } else {
-                    variablesValues.put(varName,expression);
-                }
+                variablesValues.put(varName,expression);
             }
         }
+    }
+
+    @Override
+    public void defineParentVariable(String varName){
+        parentVariables.add(varName);
     }
 
     @Override

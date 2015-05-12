@@ -213,7 +213,7 @@ public class SemesterTest {
     @Test
     public void test30() throws IOException {
         testValidExpressions(
-                "a=5;DEF f() a;f();",
+                "a=5;DEF f(){ parental a; a; }f();",
                 5.0, 5.0
         );
     }
@@ -480,12 +480,12 @@ public class SemesterTest {
     @Test
     public void testGlobalVariable () throws IOException {
         testValidExpressions("a = 10;" +
-                             "DEF addToA(b) a + b;\n" +
+                             "DEF addToA(b) {parental a; a + b;}\n" +
                              "addToA(0);" +
                              "a = addToA(last); addToA(1);", 10.0, 10.0, 20.0, 21.0);
     }
 
-    @Test
+    @Test(expected = BadExpressionFormatException.class)
     public void testLocalVariable () throws IOException {
         testValidExpressions("DEF sqr(a) { b = a * a;  b; }\n" +
                 "sqr(5);b;\n", 25.0, 0.0);
@@ -555,5 +555,17 @@ public class SemesterTest {
                              "ceil(1/3); floor(20/9);" +
                              "DEF sqrtRec(a, b){c = a/b; d = (b-c)*(b-c); if(d < 1/10000){c;}else{sqrtRec(a, (c+b)/2);};};" +
                              "DEF sqrt(a){sqrtRec(a, a/2);};floor(sqrt(3));ceil(sqrt(3));", 1.0, 2.0, 1.0, 2.0);
+    }
+
+    @Test
+    public void fibonacci2Test () throws IOException {
+        testValidExpressions(
+                "DEF fibonacci(i){n=i;if(n<=1){1;}else{fibonacci(n-1)+fibonacci(n-2)}}" +
+                        "fibonacci(0);fibonacci(1);fibonacci(2);fibonacci(4);fibonacci(20);",
+                fibonacci(0),
+                fibonacci(1),
+                fibonacci(2),
+                5.0,
+                fibonacci(20));
     }
 }

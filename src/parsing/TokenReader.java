@@ -38,7 +38,7 @@ public class TokenReader{
         tokenHashMap.put(TokenType.plus, Pattern.compile("+",Pattern.LITERAL));
         tokenHashMap.put(TokenType.minus, Pattern.compile("-",Pattern.LITERAL));
         tokenHashMap.put(TokenType.equals, Pattern.compile("=",Pattern.LITERAL));
-        tokenHashMap.put(TokenType.def, Pattern.compile("DEF",Pattern.LITERAL));
+        tokenHashMap.put(TokenType.defKey, Pattern.compile("DEF",Pattern.LITERAL));
         tokenHashMap.put(TokenType.lBracket, Pattern.compile("(",Pattern.LITERAL));
         tokenHashMap.put(TokenType.rBracket, Pattern.compile(")",Pattern.LITERAL));
         tokenHashMap.put(TokenType.argSeparator, Pattern.compile(",",Pattern.LITERAL));
@@ -48,10 +48,10 @@ public class TokenReader{
         tokenHashMap.put(TokenType.forKey, Pattern.compile("for", Pattern.LITERAL));
         tokenHashMap.put(TokenType.ifKey, Pattern.compile("if",Pattern.LITERAL));
         tokenHashMap.put(TokenType.elseKey, Pattern.compile("else",Pattern.LITERAL));
+        tokenHashMap.put(TokenType.parentalKey, Pattern.compile("parental",Pattern.LITERAL));
         tokenHashMap.put(TokenType.relOper, Pattern.compile(">=|<=|<|>|=="));
         funcArgsHashMap.put(TokenType.number, Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?"));
         funcArgsHashMap.put(TokenType.identifier, Pattern.compile("[a-zA-Z]+"));
-        Pattern newLinePattern = Pattern.compile("(\\r)?\\n");
         whiteCharPattern = Pattern.compile("\\s+");
         tokenHashMap.putAll(funcArgsHashMap);
         try {
@@ -65,24 +65,25 @@ public class TokenReader{
      * TOKENS:
      */
     public enum TokenType {
+        identifier,
+        relOper,
+        number,
         lBracket,
         rBracket,
+        lBrace,
+        rBrace,
         equals,
         plus,
         minus,
         asterisk,
         slash,
-        def,
-        identifier,
-        number,
         argSeparator,
         precisionKey,
-        lBrace,
-        rBrace,
         forKey,
         ifKey,
         elseKey,
-        relOper
+        defKey,
+        parentalKey
     }
 
     public static class Token {
