@@ -1,5 +1,3 @@
-/* Pouzijte implicitni nepojmenovany balicek, tj. nepouzijte "package" */
-
 import executing.Calc;
 
 import java.io.*;
@@ -13,7 +11,7 @@ import java.util.regex.Pattern;
  *
  * @author Jan Mares
  */
-public class CodEx {
+public class Main {
     public static void main(String[] argv) {
         Calc.compute(System.in, System.out);
     }

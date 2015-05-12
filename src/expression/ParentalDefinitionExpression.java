@@ -18,6 +18,6 @@ public class ParentalDefinitionExpression<T> implements IExpression<T> {
     @Override
     public T solve(IExpressionContext<T> context) {
         context.defineParentVariable(varName);
-        return null;
+        return context.getVariableValue(varName).solve(context);
     }
 }

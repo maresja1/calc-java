@@ -1,3 +1,5 @@
+package test;
+
 import exception.BadExpressionFormatException;
 import executing.FloatSolver;
 import expression.IExpression;
@@ -9,8 +11,9 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigDecimal;
 
+
 /**
- * Created by Tom on 5.4.15.
+ * Created by Jan Mares on 05.04.2015
  */
 public class SemesterTest {
     private static TokenReader createReader(String string){
@@ -503,7 +506,7 @@ public class SemesterTest {
 
     @Test
     public void testFor () throws IOException {
-        testValidExpressions("DEF factorial(n) {f = 1; for(i, 1, n ){f = f*(i+1)} f; }" +
+        testValidExpressions("DEF factorial(n) {f = 1; for(i, 1, n ){f = f*(i+1)} f;}" +
                              "factorial(0); factorial(1); factorial(2); factorial(3); factorial(10);",
                              factorial(0), factorial(1), 2.0, 6.0, factorial(10));
     }

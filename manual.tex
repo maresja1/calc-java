@@ -1,0 +1,167 @@
+\documentclass{article}
+\usepackage{blindtext}
+\usepackage{graphicx}
+\usepackage{amsthm}	
+\usepackage[utf8]{inputenc} 
+\usepackage{float}
+\usepackage{listings}
+
+
+ 
+\newcommand{\insName}{Bc. Jan Mareš}
+\newcommand{\insTitle}{Procedural calculator - User reference}
+
+\title{
+\insTitle
+}
+
+\author{\insName}
+ 
+\begin{document}
+ 
+\maketitle
+
+\section{Introduction}
+The Procedural calculator (hereinafter referred to as calc) is an application allowing
+the computation of complex formulas in ten based fractions with adjustable presicision. Calc
+is very similar to language interprets with an emphasis put on computation. Classic numeric
+formulas are extended with a possibility to define and use functions, variables, conditional
+statements or loops.
+\section{Basic formulas}
+Calc offers computing basic formulas written in an infix form. Supported operators are
++,-,*,/ and brackets. All of them have their usual meaning. See example~\ref{fig:example_basic}.
+\begin{figure}[H]
+	\texttt{
+ 		\begin{tabular}{ll}
+			Input: & Output: \\
+			6+4 & 10 \\
+			20/(2+8) & 2 \\
+			20/2+8 & 18 \\
+			20.3 * 2 & 40.6 \\
+		\end{tabular}
+	}
+	\caption{Basic formula \label{fig:example_basic}}
+\end{figure}
+\section{Variables}
+Basic formulas can be extended with usage of variables. Variables can be assigned a value and
+this value can be later retrieved or changed. Reference to variables are not supported. Calc
+supports one special variable - $last$. This variable contains value of the last executed 
+statement. For usage of variables see exmaple~\ref{fig:example_variables}.
+\begin{figure}[H]
+	\begin{lstlisting}
+a = 20;
+b = a + 10;
+b;
+last;
+	\end{lstlisting}
+Output: \\
+	\texttt{
+20 \\
+30 \\
+30 \\
+30 \\
+	}
+	\caption{Usage of variables \label{fig:example_variables}}
+\end{figure}
+\section{Functions}
+As mentioned in the introduction calc gives to the user ability to define and
+call functions. In fuctions variables are by default local - they
+are accessible only from this function. Variable can be made global(or parental) with usage of parental
+keyword. Function can use named attributes - they behave the same way as local 
+variables except their value is set right after calling function. Exmaple~\ref{fig:example_factorial}
+shows function factorial written for calc.
+\begin{figure}[H]
+	\begin{lstlisting}
+DEF factorial(n) {
+ 	f = 1;
+ 	for(i, 1, n ){
+	 	f = f*(i+1)
+	}
+	f;
+}
+	\end{lstlisting}
+	\caption{Factorial function \label{fig:example_factorial}}
+\end{figure}
+Code inside a function
+can call other functions or itself (also called recursion). Local variables are stored in a stack
+per function call. Thanks to this it is safe to use recursion. Example~\ref{fig:example_fibonacci} 
+shows usage of recursion when computing Fibonacci's $n$-th number.
+\begin{figure}[H]
+	\begin{lstlisting}
+DEF fibonacci(n){
+	if(n<=1){
+		1;
+	} else {
+		fibonacci(n-1)+fibonacci(n-2)
+	}
+}
+	\end{lstlisting}
+	\caption{Fibonacci function \label{fig:example_fibonacci}}
+\end{figure}
+\section{Control flow}
+Main program is the code that is not part of any function. In the main program result of
+every statement is printed to the output. Every statement must have some result value. Result
+value of a function call is the result value of its statement. Result value of a compound statement
+is the result value of its last statement.
+\section{Syntax}
+\subsection{For loop}
+For loop is similar to the one used in Pascal. Name
+of the iterator variable is specified, then its start value
+and upper bound. For loop continues executing its body while 
+iterator value is less than the upper bound. Start value or upper bound
+can be constant or expression.
+\begin{figure}[H]
+	\begin{lstlisting}
+for(iterator name, start value, upper bound){
+	code;
+}
+	\end{lstlisting}
+Example:
+	\begin{lstlisting}
+for(i,0,5){
+	f(i);
+}
+	\end{lstlisting}
+Is equal in C to:
+	\begin{lstlisting}
+for(int i=0; i<5; ++i){
+	f(i);
+}
+	\end{lstlisting}
+	\caption{For loop \label{fig:syntax_for}}
+\end{figure}
+\subsection{Condition}
+Conditions are almost the same as conditions in Java and C.
+\begin{figure}[H]
+	\begin{lstlisting}
+if(expression){
+	executed when expression is different from 0
+} else {
+	executed when expression is 0
+}
+	\end{lstlisting}
+	\caption{For loop \label{fig:syntax_if}}
+\end{figure}
+\subsection{Grammar}
+\begin{figure}[H]
+\texttt
+{Program $\rightarrow$ Statement StatementList \\
+StatementList $\rightarrow$ \textit{;}Statement StatementList | $\lambda$ \\
+Statement $\rightarrow$ CompoundStatement | NakedStatement \\
+CompoundStatement $\rightarrow$  \{ Statement StatementList \} | \{\} \\
+NakedStatement $\rightarrow$ \textit{identifier} = BoolExpression 
+| \textit{for} ( \textit{identifier}, BoolExpression, BoolExpression ) Statement \\
+| \textit{if}(BoolExpression) Statement IfRest | \textit{parental} \textit{indentifier} | BoolExpression | FuncDef\\
+IfRest  $\rightarrow$ \textit{else} Statement | $\lambda$ \\
+BoolExpression $\rightarrow$ Expression \textit{==} Expression | Expression \textit{<} Expression | ... for \textit{>,>=,<=} | Exression \\
+Expression $\rightarrow$ T \textit{+} T | T \textit{-} T | T \\
+T $\rightarrow$ F \textit{*} F | F \textit{/} F | F \\
+F $\rightarrow$ (BoolExpression) | \textit{number} | \textit{identifier} | FuncCall \\
+FuncDef $\rightarrow$ \textit{DEF} \textit{identifier} (VarList) Statement \\
+FuncCall $\rightarrow$ \textit{identifier} (ArgList) \\
+VarList $\rightarrow$ \textit{identifer}, VarList | $\lambda$ \\
+ArgList $\rightarrow$ BoolExpression, ArgList | $\lambda$ \\}
+	\caption{Calc's grammar \label{fig:grammar}}
+\end{figure}
+
+\end{document}

@@ -1,0 +1,59 @@
+<project>
+    <property name="build.project" value="build/classes"/>
+    <property name="build.tests" value="build/test"/>
+    <path id="master-classpath">
+        <fileset dir="lib">
+            <include name="*.jar"/>
+        </fileset>
+
+        <pathelement path="${build.project}"/>
+    </path>
+
+    <target name="clean">
+        <delete dir="build"/>
+    </target>
+
+    <target name="compile">
+        <mkdir dir="build/classes"/>
+        <javac srcdir="src" destdir="${build.project}"/>
+    </target>
+
+    <target name="compile-test">
+        <mkdir dir="build/test"/>
+        <javac srcdir="test" destdir="${build.tests}">
+            <classpath refid="master-classpath"/>
+        </javac>
+    </target>
+
+    <target name="jar"  depends="compile">
+        <mkdir dir="build/jar"/>
+        <jar destfile="build/jar/Calc.jar" basedir="${build.project}">
+            <manifest>
+                <attribute name="Main-Class" value="Main"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="run"  depends="jar">
+        <java jar="build/jar/Calc.jar" fork="true"/>
+    </target>
+
+    <target name="test" depends="compile-test">
+        <junit printsummary="on" haltonfailure="no">
+
+            <classpath>
+                <path refid="master-classpath"/>
+                <pathelement path="${build.tests}"/>
+            </classpath>
+
+            <test name="test.SemesterTest"
+                  haltonfailure="no" outfile="result">
+
+                <formatter type="plain"/>
+                <formatter type="xml"/>
+
+            </test>
+
+        </junit>
+    </target>
+</project>
