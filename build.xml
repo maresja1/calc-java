@@ -39,21 +39,31 @@
     </target>
 
     <target name="test" depends="compile-test">
-        <junit printsummary="on" haltonfailure="no">
-
+        <junit printsummary="on" haltonfailure="no" fork="true">
             <classpath>
                 <path refid="master-classpath"/>
                 <pathelement path="${build.tests}"/>
             </classpath>
-
             <test name="test.SemesterTest"
                   haltonfailure="no" outfile="result">
-
                 <formatter type="plain"/>
-                <formatter type="xml"/>
-
             </test>
-
         </junit>
+    </target>
+
+    <target name="doc">
+        <javadoc packagenames="*"
+                 sourcepath="src"
+                 defaultexcludes="yes"
+                 destdir="docs/api"
+                 author="true"
+                 version="true"
+                 use="true"
+                 windowtitle="Procedural calculator">
+            <doctitle><![CDATA[<h1>Procedural calculator</h1>]]></doctitle>
+            <bottom><![CDATA[<i>Copyright &#169; 2000 Dummy Corp. All Rights Reserved.</i>]]></bottom>
+            <tag name="todo" scope="all" description="To do:"/>
+            <link href="http://docs.oracle.com/javase/7/docs/api/"/>
+        </javadoc>
     </target>
 </project>
